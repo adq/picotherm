@@ -1,6 +1,7 @@
 import machine
 import rp2
 import time
+from lib import manchester_encode, frame_encode
 
 
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
@@ -63,38 +64,6 @@ sm_opentherm_tx = rp2.StateMachine(0, opentherm_tx, freq=4000, set_base=machine.
 #     jmp("read_next_bit")
 
 # sm_opentherm_rx = rp2.StateMachine(1, opentherm_rx, freq=80000, in_base=machine.Pin(1), jmp_pin=machine.Pin(1)) # each tick is 12.5uS
-
-
-def manchester_encode(frame):
-    """
-    Manchester encodes a 32 bit frame into a 64 bit integer
-    """
-
-    mframe = 0
-    mask = 0x8000000
-    for i in range(32):
-        if frame & mask:
-            mframe <<= 2
-            mframe |= 2
-        else:
-            mframe <<= 2
-            mframe |= 1
-        mask >>= 1
-
-    return mframe
-
-
-def frame_encode(msg_type, data_id, data_value):
-    """
-    Encodes opentherm info into a 32 bit frame
-    """
-
-    frame = 0
-    frame |= (msg_type & 0x07) << 1
-    frame |= (data_id & 0xff) << 8
-    frame |= (data_value & 0xffff) << 16
-    frame |= (bin(frame).count("1") & 1) # parity bit
-    return frame
 
 
 # p = machine.Pin(0, mode=machine.Pin.OUT)
