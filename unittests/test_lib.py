@@ -17,6 +17,8 @@ class TestManchester(unittest.TestCase):
         assert manchester_decode(0x9999999999999999) == 0xAAAAAAAA
         assert manchester_decode(0x6666666666666666) == 0x55555555
         assert manchester_decode(0x56595a6566696a95) == 0x12345678
+        self.assertRaises(ValueError, manchester_decode, 0xfaaaaaaaaaaaaaaa)
+        self.assertRaises(ValueError, manchester_decode, 0x0aaaaaaaaaaaaaaa)
 
 
 class TestFrame(unittest.TestCase):
@@ -30,3 +32,4 @@ class TestFrame(unittest.TestCase):
         assert frame_decode(0x00000000) == (0, 0, 0)
         assert frame_decode(0xffffff0f) == (0x07, 0xff, 0xffff)
         assert frame_decode(0x4278bb0f) == (0x07, 0xbb, 0x4278)
+        self.assertRaises(ValueError, frame_decode, 0x4278bb0e)
