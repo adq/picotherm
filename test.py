@@ -6,6 +6,7 @@ import time
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
 @rp2.asm_pio(set_init=rp2.PIO.OUT_LOW, out_init=rp2.PIO.OUT_LOW, autopull=True)
 def opentherm_tx():
+    # counter for bit writing loop
     set(x, 31)
 
     # write start bit
@@ -39,23 +40,24 @@ sm_opentherm_tx = rp2.StateMachine(0, opentherm_tx, freq=4000, set_base=machine.
 #     # wait for start bit
 #     wait(1, pins, 0)
 #     wait(0, pins, 0)
+#     jmp("wait_for_bit_currently_0")
 
 #     # read the current bit from the GPIO
 #     label("read_next_bit")
 #     in_(pins, 1)
-#     set(x, 13)  # 13 loops, 4 ticks per loop, 80kHz == 650uS
+#     set(x, 12)  # 13 loops, 4 ticks per loop, 80kHz == 650uS
 #     jmp(pins, "wait_for_bit_currently_1")
 
 #     # wait for a bit change from 0->1 or timeout
 #     label("wait_for_bit_currently_0")
-#     mov(y, pins)
+#     mov(y, invert(pins))
 #     jmp(y_dec, "read_next_bit")
 #     jmp(dec_x, "wait_for_bit_currently_0")
 #     jmp("read_next_bit")
 
 #     # wait for a bit change from 1->0 or timeout
 #     label("wait_for_bit_currently_1")
-#     mov(y, invert(pins))
+#     mov(y, pins)
 #     jmp(y_dec, "read_next_bit")
 #     jmp(x_dec, "wait_for_bit_currently_1")
 #     jmp("read_next_bit")
@@ -84,7 +86,7 @@ def manchester_encode(frame):
 
 def frame_encode(msg_type, data_id, data_value):
     """
-    Encodes opentherm into a 32 bit frame
+    Encodes opentherm info into a 32 bit frame
     """
 
     frame = 0
