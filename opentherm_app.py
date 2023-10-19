@@ -1,4 +1,11 @@
-from opentherm_rp2 import opentherm_exchange
+try:
+    from opentherm_rp2 import opentherm_exchange
+
+except ImportError:
+    # dummy implementation so it loads on non-pico
+    def opentherm_exchange(a, b, c) -> tuple[int, int, int]:
+        raise NotImplementedError("opentherm_exchange not implemented on this platform")  # pragma: nocover
+
 
 MSG_TYPE_READ_DATA = 0
 MSG_TYPE_WRITE_DATA = 1
@@ -67,11 +74,13 @@ DATA_ID_PRIMARY_VERSION = 126
 DATA_ID_SECONDARY_VERSION = 127
 
 
-def status_exchange(ch_enabled=False,
-                    dhw_enabled=False,
-                    cooling_enabled=False,
-                    otc_enabled=False,
-                    ch2_enabled=False) -> dict:
+def status_exchange(
+    ch_enabled=False,
+    dhw_enabled=False,
+    cooling_enabled=False,
+    otc_enabled=False,
+    ch2_enabled=False,
+) -> dict:
     data = 0
     data |= 0x0100 if ch_enabled else 0
     data |= 0x0200 if dhw_enabled else 0
@@ -79,138 +88,170 @@ def status_exchange(ch_enabled=False,
     data |= 0x0800 if otc_enabled else 0
     data |= 0x1000 if ch2_enabled else 0
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_STATUS, data)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_STATUS, data
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_STATUS
 
-    result = dict(fault=True if r_data & 0x01 else False,
-                  ch_active=True if r_data & 0x02 else False,
-                  dhw_active=True if r_data & 0x04 else False,
-                  flame_active=True if r_data & 0x08 else False,
-                  cooling_active=True if r_data & 0x10 else False,
-                  ch2_active=True if r_data & 0x20 else False,
-                  diagnostic_event=True if r_data & 0x40 else False)
+    result = dict(
+        fault=True if r_data & 0x01 else False,
+        ch_active=True if r_data & 0x02 else False,
+        dhw_active=True if r_data & 0x04 else False,
+        flame_active=True if r_data & 0x08 else False,
+        cooling_active=True if r_data & 0x10 else False,
+        ch2_active=True if r_data & 0x20 else False,
+        diagnostic_event=True if r_data & 0x40 else False,
+    )
     return result
 
 
 def send_primary_configuration(memberid_code):
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_CONFIG, memberid_code & 0xff)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_CONFIG, memberid_code & 0xFF
+    )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_PRIMARY_CONFIG
 
 
 def read_secondary_configuration():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_SECONDARY_CONFIG, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_SECONDARY_CONFIG, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_SECONDARY_CONFIG
 
-    result = dict(dhw_present=True if r_data & 0x0100 else False,
-                  control_type='onoff' if r_data & 0x0200 else 'modulating',
-                  cooling_config='supported' if r_data & 0x0400 else None,
-                  dhw_config='storage' if r_data & 0x0800 else 'instantaneous',
-                  low_off_and_pump_control=False if r_data & 0x1000 else False,
-                  ch2_supported=True if r_data & 0x2000 else False,
-                  memberid_code=r_data & 0xff)
+    result = dict(
+        dhw_present=True if r_data & 0x0100 else False,
+        control_type="onoff" if r_data & 0x0200 else "modulating",
+        cooling_config=True if r_data & 0x0400 else False,
+        dhw_config="storage" if r_data & 0x0800 else "instantaneous",
+        low_off_and_pump_control=True if not (r_data & 0x1000) else False,
+        ch2_supported=True if r_data & 0x2000 else False,
+        memberid_code=r_data & 0xFF,
+    )
     return result
 
 
 def control_ch_setpoint(setpoint: int):
     assert setpoint >= 0 and setpoint <= 100
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_WRITE_DATA, DATA_ID_TSET, setpoint * 256)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_TSET, setpoint * 256
+    )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_TSET
+
 
 # FIXME: can we read the ch setpoint?
 
 
 def read_dhw_setpoint_range():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_TDHWSET_BOUNDS, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TDHWSET_BOUNDS, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_TDHWSET_BOUNDS
 
-    return r_data & 0xff, r_data >> 8
+    return r_data & 0xFF, r_data >> 8
 
 
 def control_dhw_setpoint(setpoint: int):
     assert setpoint >= 0 and setpoint <= 100
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_WRITE_DATA, DATA_ID_TDHWSET, setpoint * 256)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_TDHWSET, setpoint * 256
+    )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_TDHWSET
 
 
 def read_dhw_setpoint():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_TDHWSET, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TDHWSET, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_TDHWSET
     return r_data / 256
 
 
 def read_maxch_setpoint_range():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_MAXTSET_BOUNDS, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_MAXTSET_BOUNDS, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_MAXTSET_BOUNDS
 
-    return r_data & 0xff, r_data >> 8
+    return r_data & 0xFF, r_data >> 8
 
 
 def control_maxch_setpoint(setpoint: int):
     assert setpoint >= 0 and setpoint <= 100
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_WRITE_DATA, DATA_ID_MAXTSET, setpoint * 256)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_MAXTSET, setpoint * 256
+    )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_MAXTSET
 
 
 def read_maxch_setpoint():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_MAXTSET, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_MAXTSET, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_MAXTSET
     return r_data / 256
 
 
 def read_extra_boiler_params_support():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_RBP_FLAGS, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_RBP_FLAGS, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_RBP_FLAGS
 
     dhw_setpoint = None
     if r_data & 0x10:
         if r_data & 0x01:
-            dhw_setpoint = 'rw'
+            dhw_setpoint = "rw"
         else:
-            dhw_setpoint = 'ro'
+            dhw_setpoint = "ro"
 
     maxch_setpoint = None
     if r_data & 0x20:
         if r_data & 0x02:
-            maxch_setpoint = 'rw'
+            maxch_setpoint = "rw"
         else:
-            maxch_setpoint = 'ro'
+            maxch_setpoint = "ro"
 
-    result = dict(dhw_setpoint=dhw_setpoint,
-                  maxch_setpoint=maxch_setpoint)
+    result = dict(dhw_setpoint=dhw_setpoint, maxch_setpoint=maxch_setpoint)
     return result
 
 
 def read_fault_flags():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_ASF_FAULT, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_ASF_FAULT, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_ASF_FAULT
 
-    result = dict(service_required=True if r_data & 0x0100 else False,
-                  blor_enabled=True if r_data & 0x0200 else False,
-                  low_water_pressure=True if r_data & 0x0400 else False,
-                  flame_fault=True if r_data & 0x0800 else False,
-                  air_pressure_fault=True if r_data & 0x1000 else False,
-                  water_over_temp=True if r_data & 0x2000 else False,
-                  oem_code = r_data & 0xff)
+    result = dict(
+        service_required=True if r_data & 0x0100 else False,
+        blor_enabled=True if r_data & 0x0200 else False,
+        low_water_pressure=True if r_data & 0x0400 else False,
+        flame_fault=True if r_data & 0x0800 else False,
+        air_pressure_fault=True if r_data & 0x1000 else False,
+        water_over_temp=True if r_data & 0x2000 else False,
+        oem_code=r_data & 0xFF,
+    )
     return result
 
 
 def read_oem_long_code():
-    r_msg_type, r_data_id, r_data = opentherm_exchange(MSG_TYPE_READ_DATA, DATA_ID_OEM_DIAGNOSTIC_CODE, 0)
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_OEM_DIAGNOSTIC_CODE, 0
+    )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_OEM_DIAGNOSTIC_CODE
     return r_data
