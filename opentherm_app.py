@@ -116,7 +116,7 @@ def send_primary_configuration(memberid_code: int):
 
 def send_primary_opentherm_version(version: float):
     r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, version * 256
+        MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, int(version * 256)
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_OPENTHERM_VERSION_PRIMARY

@@ -282,7 +282,7 @@ class TestOpenThermApp_send_primary_opentherm_version(unittest.TestCase):
     @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_OPENTHERM_VERSION_PRIMARY, 0))
     def test_send_primary_opentherm_version(self, mock_opentherm_exchange):
         send_primary_opentherm_version(2.2)
-        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, 563.2)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, 563)
 
     @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_OPENTHERM_VERSION_PRIMARY, 0))
     def test_send_primary_opentherm_version_zero(self, mock_opentherm_exchange):
