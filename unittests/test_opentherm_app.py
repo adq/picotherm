@@ -786,3 +786,59 @@ class TestOpenThermApp_control_ch2_setpoint(unittest.TestCase):
         with self.assertRaises(AssertionError):
             control_ch2_setpoint(101)
 
+class TestOpenThermApp_read_hcratio_range(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO_BOUNDS, 0x1F0A))
+    def test_read_hcratio_range(self, mock_opentherm_exchange):
+        result = read_hcratio_range()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO_BOUNDS, 0)
+        self.assertEqual(result, (10, 31))
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO_BOUNDS, 0x0000))
+    def test_read_hcratio_range_zero(self, mock_opentherm_exchange):
+        result = read_hcratio_range()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO_BOUNDS, 0)
+        self.assertEqual(result, (0, 0))
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO_BOUNDS, 0xFFFF))
+    def test_read_hcratio_range_max(self, mock_opentherm_exchange):
+        result = read_hcratio_range()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO_BOUNDS, 0)
+        self.assertEqual(result, (-1, -1))
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO_BOUNDS, 0x8000))
+    def test_read_hcratio_range_negative(self, mock_opentherm_exchange):
+        result = read_hcratio_range()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO_BOUNDS, 0)
+        self.assertEqual(result, (0, -128))
+
+class TestOpenThermApp_control_hcratio(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_HCRATIO, 0))
+    def test_control_hcratio(self, mock_opentherm_exchange):
+        control_hcratio(50.0)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_HCRATIO, int(50.0 * 256))
+
+    def test_control_hcratio_invalid(self):
+        with self.assertRaises(AssertionError):
+            control_hcratio(-1)
+        with self.assertRaises(AssertionError):
+            control_hcratio(101)
+
+class TestOpenThermApp_read_hcratio(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO, 0x7FFF))
+    def test_read_hcratio(self, mock_opentherm_exchange):
+        result = read_hcratio()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO, 0)
+        self.assertEqual(result, 127.99609375)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO, 0x0000))
+    def test_read_hcratio_zero(self, mock_opentherm_exchange):
+        result = read_hcratio()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO, 0)
+        self.assertEqual(result, 0.0)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_HCRATIO, 0x8000))
+    def test_read_hcratio_negative(self, mock_opentherm_exchange):
+        result = read_hcratio()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO, 0)
+        self.assertEqual(result, -128.0)
+

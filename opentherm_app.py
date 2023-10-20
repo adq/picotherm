@@ -279,6 +279,36 @@ def read_maxch_setpoint() -> float:
     return f88(r_data)
 
 
+
+def read_hcratio_range() -> tuple[int, int]:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_HCRATIO_BOUNDS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_HCRATIO_BOUNDS
+
+    return s8(r_data & 0xFF), s8(r_data >> 8)
+
+
+def control_hcratio(ratio: float):
+    assert ratio >= 0 and ratio <= 100
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_HCRATIO, int(ratio * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_HCRATIO
+
+
+def read_hcratio() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_HCRATIO, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_HCRATIO
+    return f88(r_data)
+
+
 def read_extra_boiler_params_support() -> dict:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_RBP_FLAGS, 0
