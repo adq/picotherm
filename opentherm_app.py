@@ -106,12 +106,28 @@ def status_exchange(
     return result
 
 
-def send_primary_configuration(memberid_code):
+def send_primary_configuration(memberid_code: int):
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_CONFIG, memberid_code & 0xFF
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_PRIMARY_CONFIG
+
+
+def send_primary_opentherm_version(version: float):
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, version * 256
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_OPENTHERM_VERSION_PRIMARY
+
+
+def send_primary_product_version(type, version):
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_VERSION, ((type & 0xff) << 8) | (version & 0xff)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_PRIMARY_VERSION
 
 
 def read_secondary_configuration():
@@ -131,6 +147,24 @@ def read_secondary_configuration():
         memberid_code=r_data & 0xFF,
     )
     return result
+
+
+def read_secondary_opentherm_version() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_OPENTHERM_VERSION_SECONDARY, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_OPENTHERM_VERSION_SECONDARY
+    return r_data / 256
+
+
+def read_secondary_product_version() -> tuple[int, int]:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_SECONDARY_VERSION, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_SECONDARY_VERSION
+    return r_data >> 8, r_data & 0xff
 
 
 def control_ch_setpoint(setpoint: int):

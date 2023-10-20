@@ -276,3 +276,59 @@ class TestOpenThermApp_read_oem_long_code(unittest.TestCase):
         result = read_oem_long_code()
         mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_OEM_DIAGNOSTIC_CODE, 0)
         self.assertEqual(result, 0x1234)
+
+
+class TestOpenThermApp_send_primary_opentherm_version(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_OPENTHERM_VERSION_PRIMARY, 0))
+    def test_send_primary_opentherm_version(self, mock_opentherm_exchange):
+        send_primary_opentherm_version(2.2)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, 563.2)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_OPENTHERM_VERSION_PRIMARY, 0))
+    def test_send_primary_opentherm_version_zero(self, mock_opentherm_exchange):
+        send_primary_opentherm_version(0)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, 0)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_OPENTHERM_VERSION_PRIMARY, 0))
+    def test_send_primary_opentherm_version_max(self, mock_opentherm_exchange):
+        send_primary_opentherm_version(3.9375)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_OPENTHERM_VERSION_PRIMARY, 1008)
+
+
+class TestOpenThermApp_send_primary_product_version(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_PRIMARY_VERSION, 0))
+    def test_send_primary_product_version(self, mock_opentherm_exchange):
+        send_primary_product_version(0x01, 0x02)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_VERSION, 0x0102)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_PRIMARY_VERSION, 0))
+    def test_send_primary_product_version_max(self, mock_opentherm_exchange):
+        send_primary_product_version(0xFF, 0xFF)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_VERSION, 0xFFFF)
+
+
+class TestOpenThermApp_read_secondary_opentherm_version(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_OPENTHERM_VERSION_SECONDARY, 0x0102))
+    def test_read_secondary_opentherm_version(self, mock_opentherm_exchange):
+        result = read_secondary_opentherm_version()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_OPENTHERM_VERSION_SECONDARY, 0)
+        self.assertEqual(result, 1.0078125)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_OPENTHERM_VERSION_SECONDARY, 0x0200))
+    def test_read_secondary_opentherm_version_v2(self, mock_opentherm_exchange):
+        result = read_secondary_opentherm_version()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_OPENTHERM_VERSION_SECONDARY, 0)
+        self.assertEqual(result, 2.0)
+
+class TestOpenThermApp_read_secondary_product_version(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_SECONDARY_VERSION, 0x0102))
+    def test_read_secondary_product_version(self, mock_opentherm_exchange):
+        result = read_secondary_product_version()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_SECONDARY_VERSION, 0)
+        self.assertEqual(result, (1, 2))
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_SECONDARY_VERSION, 0x0304))
+    def test_read_secondary_product_version_another_version(self, mock_opentherm_exchange):
+        result = read_secondary_product_version()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_SECONDARY_VERSION, 0)
+        self.assertEqual(result, (3, 4))
