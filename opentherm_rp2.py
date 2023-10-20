@@ -84,8 +84,8 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     sm_opentherm_rx.active(1)
 
     # send the data using the transmitter pio
-    sm_opentherm_tx.put(m)
-    sm_opentherm_tx.put(m >> 32)
+    sm_opentherm_tx.put(int(m))
+    sm_opentherm_tx.put(int(m) >> 32)
     sm_opentherm_tx.restart()
     sm_opentherm_tx.active(1)
 

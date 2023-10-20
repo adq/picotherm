@@ -74,3 +74,15 @@ def frame_decode(frame: int) -> tuple[int, int, int]:
     data_id = (frame >> 8) & 0xff
     data_value = (frame >> 16) & 0xffff
     return msg_type, data_id, data_value
+
+
+def s8(x: int) -> int:
+    return ((x & 0xff) ^ 0x80) - 0x80
+
+
+def s16(x: int) -> int:
+    return ((x & 0xffff) ^ 0x8000) - 0x8000
+
+
+def f88(x: int) -> float:
+    return s16(x) / 256

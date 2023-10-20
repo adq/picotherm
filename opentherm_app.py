@@ -1,9 +1,10 @@
+from lib import s8, s16, f88
 try:
     from opentherm_rp2 import opentherm_exchange
 
 except ImportError:
-    # dummy implementation so it loads on non-pico
-    def opentherm_exchange(a, b, c) -> tuple[int, int, int]:
+    # dummy implementation so it loads on non-pico for unit tests
+    def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000) -> tuple[int, int, int]:
         raise NotImplementedError("opentherm_exchange not implemented on this platform")  # pragma: nocover
 
 
@@ -122,7 +123,7 @@ def send_primary_opentherm_version(version: float):
     assert r_data_id == DATA_ID_OPENTHERM_VERSION_PRIMARY
 
 
-def send_primary_product_version(type, version):
+def send_primary_product_version(type: int, version: int):
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_WRITE_DATA, DATA_ID_PRIMARY_VERSION, ((type & 0xff) << 8) | (version & 0xff)
     )
@@ -130,7 +131,7 @@ def send_primary_product_version(type, version):
     assert r_data_id == DATA_ID_PRIMARY_VERSION
 
 
-def read_secondary_configuration():
+def read_secondary_configuration() -> dict:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_SECONDARY_CONFIG, 0
     )
@@ -155,7 +156,7 @@ def read_secondary_opentherm_version() -> float:
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_OPENTHERM_VERSION_SECONDARY
-    return r_data / 256
+    return f88(r_data)
 
 
 def read_secondary_product_version() -> tuple[int, int]:
@@ -167,78 +168,118 @@ def read_secondary_product_version() -> tuple[int, int]:
     return r_data >> 8, r_data & 0xff
 
 
-def control_ch_setpoint(setpoint: int):
+def control_ch_setpoint(setpoint: float):
     assert setpoint >= 0 and setpoint <= 100
 
     r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_TSET, setpoint * 256
+        MSG_TYPE_WRITE_DATA, DATA_ID_TSET, int(setpoint * 256)
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_TSET
 
 
+def control_ch2_setpoint(setpoint: float):
+    assert setpoint >= 0 and setpoint <= 100
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_TSETCH2, int(setpoint * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_TSETCH2
+
+
 # FIXME: can we read the ch setpoint?
 
 
-def read_dhw_setpoint_range():
+def read_dhw_setpoint_range() -> tuple[int, int]:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_TDHWSET_BOUNDS, 0
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_TDHWSET_BOUNDS
 
-    return r_data & 0xFF, r_data >> 8
+    return s8(r_data & 0xFF), s8(r_data >> 8)
 
 
 def control_dhw_setpoint(setpoint: int):
     assert setpoint >= 0 and setpoint <= 100
 
     r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_TDHWSET, setpoint * 256
+        MSG_TYPE_WRITE_DATA, DATA_ID_TDHWSET, int(setpoint * 256)
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_TDHWSET
 
 
-def read_dhw_setpoint():
+def read_dhw_setpoint() -> float:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_TDHWSET, 0
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_TDHWSET
-    return r_data / 256
+    return f88(r_data)
 
 
-def read_maxch_setpoint_range():
+def control_room_setpoint(setpoint: float):
+    assert setpoint >= -40 and setpoint <= 127
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_TRSET, int(setpoint * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_TRSET
+
+
+def control_room_setpoint_ch2(setpoint: float):
+    assert setpoint >= -40 and setpoint <= 127
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_TRSETCH2, int(setpoint * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_TRSETCH2
+
+
+def control_room_temperature(setpoint: float):
+    assert setpoint >= -40 and setpoint <= 127
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_TR, int(setpoint * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_TR
+
+
+def read_maxch_setpoint_range() -> tuple[int, int]:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_MAXTSET_BOUNDS, 0
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_MAXTSET_BOUNDS
 
-    return r_data & 0xFF, r_data >> 8
+    return s8(r_data & 0xFF), s8(r_data >> 8)
 
 
-def control_maxch_setpoint(setpoint: int):
+def control_maxch_setpoint(setpoint: float):
     assert setpoint >= 0 and setpoint <= 100
 
     r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_MAXTSET, setpoint * 256
+        MSG_TYPE_WRITE_DATA, DATA_ID_MAXTSET, int(setpoint * 256)
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_MAXTSET
 
 
-def read_maxch_setpoint():
+def read_maxch_setpoint() -> float:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_MAXTSET, 0
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_MAXTSET
-    return r_data / 256
+    return f88(r_data)
 
 
-def read_extra_boiler_params_support():
+def read_extra_boiler_params_support() -> dict:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_RBP_FLAGS, 0
     )
@@ -263,7 +304,7 @@ def read_extra_boiler_params_support():
     return result
 
 
-def read_fault_flags():
+def read_fault_flags() -> dict:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_ASF_FAULT, 0
     )
@@ -282,10 +323,190 @@ def read_fault_flags():
     return result
 
 
-def read_oem_long_code():
+def read_oem_long_code() -> int:
     r_msg_type, r_data_id, r_data = opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_OEM_DIAGNOSTIC_CODE, 0
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_OEM_DIAGNOSTIC_CODE
+    return r_data
+
+
+def read_relative_modulation_level() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_REL_MOD_LEVEL, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_REL_MOD_LEVEL
+    return f88(r_data)
+
+
+def read_ch_water_pressure() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_CH_PRESSURE, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_CH_PRESSURE
+    return f88(r_data)
+
+
+def read_dhw_flow_rate() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_DHW_FLOW_RATE, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_DHW_FLOW_RATE
+    return f88(r_data)
+
+
+def read_boiler_flow_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TBOILER, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TBOILER
+    return f88(r_data)
+
+
+def read_boiler_flow_temperature_ch2() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TFLOWCH2, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TFLOWCH2
+    return f88(r_data)
+
+
+def read_dhw_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TDHW, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TDHW
+    return f88(r_data)
+
+
+def read_dhw2_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TDHW2, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TDHW2
+    return f88(r_data)
+
+
+def read_exhaust_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TEXHAUST, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TEXHAUST
+    return s16(r_data)
+
+
+def read_outside_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TOUTSIDE, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TOUTSIDE
+    return f88(r_data)
+
+
+def read_boiler_return_water_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TRET, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TRET
+    return f88(r_data)
+
+
+def read_solar_storage_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TSTORAGE, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TSTORAGE
+    return f88(r_data)
+
+
+def read_solar_collector_temperature() -> float:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TCOLLECTOR, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TCOLLECTOR
+    return s16(r_data)
+
+
+def read_burner_starts() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_BURNER_STARTS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_BURNER_STARTS
+    return r_data
+
+
+def read_ch_pump_starts() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_CH_PUMP_STARTS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_CH_PUMP_STARTS
+    return r_data
+
+
+def read_dhw_pump_starts() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_DHW_PUMP_STARTS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_DHW_PUMP_STARTS
+    return r_data
+
+
+def read_dhw_burner_starts() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_DHW_BURNER_STARTS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_DHW_BURNER_STARTS
+    return r_data
+
+
+def read_burner_operation_hours() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_BURNER_OPERATION_HOURS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_BURNER_OPERATION_HOURS
+    return r_data
+
+
+def read_ch_pump_operation_hours() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_CH_PUMP_OPERATION_HOURS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_CH_PUMP_OPERATION_HOURS
+    return r_data
+
+
+def read_dhw_pump_operation_hours() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_DHW_PUMP_OPERATION_HOURS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_DHW_PUMP_OPERATION_HOURS
+    return r_data
+
+
+def read_dhw_burner_operation_hours() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_DHW_BURNER_OPERATION_HOURS, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_DHW_BURNER_OPERATION_HOURS
     return r_data
