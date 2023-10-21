@@ -78,7 +78,7 @@ DATA_ID_PRIMARY_VERSION = 126
 DATA_ID_SECONDARY_VERSION = 127
 
 REMOTE_COMAND_BLOR = 1  # boiler lock out reset command
-REMOTE_COMAND_CHWF = 1  # CH water filling command
+REMOTE_COMAND_CHWF = 2  # CH water filling command
 
 
 def status_exchange(
