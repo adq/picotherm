@@ -34,7 +34,7 @@ DATA_ID_TSP_DATA = 11
 DATA_ID_FHB_COUNT = 12
 DATA_ID_FHB_DATA = 13
 DATA_ID_MAX_REL_MODULATION = 14
-DATA_ID_MAX_CAPCITY_MIN_MODULATION = 15
+DATA_ID_MAX_CAPACITY_MIN_MODULATION = 15
 DATA_ID_TRSET = 16
 DATA_ID_REL_MOD_LEVEL = 17
 DATA_ID_CH_PRESSURE = 18
@@ -648,3 +648,21 @@ def read_remote_override_function():
     result = dict(manual_change_priority=True if r_data & 0x01 else False,
                   program_change_priority=True if r_data & 0x02 else False)
     return result
+
+
+def read_capacity_and_min_modulation():
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_MAX_CAPACITY_MIN_MODULATION, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_MAX_CAPACITY_MIN_MODULATION
+
+    return r_data >> 8, r_data & 0xff
+
+
+def control_max_relative_modulation_level(l: int):
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, int(l * 256)
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_MAX_REL_MODULATION

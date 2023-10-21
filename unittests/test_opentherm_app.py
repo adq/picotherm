@@ -1022,3 +1022,17 @@ class TestOpenThermApp_control_remote_command(unittest.TestCase):
         with self.assertRaises(AssertionError):
             control_remote_command(10)
 
+
+class TestOpenThermApp_read_capacity_and_min_modulation(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_MAX_CAPACITY_MIN_MODULATION, 0x0A0B))
+    def test_read_capacity_and_min_modulation(self, mock_opentherm_exchange):
+        result = read_capacity_and_min_modulation()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_MAX_CAPACITY_MIN_MODULATION, 0)
+        self.assertEqual(result, (10, 11))
+
+
+class TestOpenThermApp_control_max_relative_modulation_level(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_MAX_REL_MODULATION, 0x7F00))
+    def test_control_max_relative_modulation_level(self, mock_opentherm_exchange):
+        control_max_relative_modulation_level(50)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, 50 * 256)
