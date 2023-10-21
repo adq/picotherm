@@ -1,4 +1,7 @@
 from lib import s8, s16, f88
+import datetime
+from typing import Optional
+
 try:
     from opentherm_rp2 import opentherm_exchange
 
@@ -73,6 +76,9 @@ DATA_ID_OPENTHERM_VERSION_PRIMARY = 124
 DATA_ID_OPENTHERM_VERSION_SECONDARY = 125
 DATA_ID_PRIMARY_VERSION = 126
 DATA_ID_SECONDARY_VERSION = 127
+
+REMOTE_COMAND_BLOR = 1  # boiler lock out reset command
+REMOTE_COMAND_CHWF = 1  # CH water filling command
 
 
 def status_exchange(
@@ -248,6 +254,16 @@ def control_room_temperature(setpoint: float):
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_TR
+
+
+def control_cooling(signal: float):
+    assert signal >= 0 and signal <= 100
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_COOLING_CONTROL, int(signal * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_COOLING_CONTROL
 
 
 def read_maxch_setpoint_range() -> tuple[int, int]:
@@ -540,3 +556,95 @@ def read_dhw_burner_operation_hours() -> int:
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_DHW_BURNER_OPERATION_HOURS
     return r_data
+
+
+def control_date_time(t: Optional[datetime.datetime] = None):
+    if t is None:
+        t = datetime.datetime.now()  # pragma: nocover
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_YEAR, t.year
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_YEAR
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_DATE, (t.month << 8) | t.day
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_DATE
+
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_DAY_TIME, (t.isoweekday() << 13) | (t.hour << 8) | t.minute
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_DAY_TIME
+
+
+def read_tsp_count() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TSP_COUNT, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TSP_COUNT
+    return r_data >> 8
+
+
+def read_tsp(index: int) -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TSP_DATA, (index << 8)
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TSP_DATA
+    assert r_data >> 8 == index
+    return r_data & 0xff
+
+
+def read_fhb_count() -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_FHB_COUNT, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_FHB_COUNT
+    return r_data >> 8
+
+
+def read_fhb(index: int) -> int:
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, (index << 8)
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_FHB_DATA
+    assert r_data >> 8 == index
+    return r_data & 0xff
+
+
+def control_remote_command(command: int):
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, command << 8
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_COMMAND
+    assert r_data >> 8 == command
+    return r_data & 0xff
+
+
+def read_remote_override_room_setpoint():
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_TROVERRIDE, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TROVERRIDE
+    return f88(r_data)
+
+
+def read_remote_override_function():
+    r_msg_type, r_data_id, r_data = opentherm_exchange(
+        MSG_TYPE_READ_DATA, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_REMOTE_OVERRIDE_FUNCTION
+
+    result = dict(manual_change_priority=True if r_data & 0x01 else False,
+                  program_change_priority=True if r_data & 0x02 else False)
+    return result

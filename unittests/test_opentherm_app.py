@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, call
 from opentherm_app import *
 
 
@@ -841,4 +841,184 @@ class TestOpenThermApp_read_hcratio(unittest.TestCase):
         result = read_hcratio()
         mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_HCRATIO, 0)
         self.assertEqual(result, -128.0)
+
+class TestOpenThermApp_control_cooling(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_COOLING_CONTROL, 0))
+    def test_control_cooling(self, mock_opentherm_exchange):
+        control_cooling(50.0)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_COOLING_CONTROL, int(50.0 * 256))
+
+    def test_control_cooling_invalid(self):
+        with self.assertRaises(AssertionError):
+            control_cooling(-1)
+        with self.assertRaises(AssertionError):
+            control_cooling(101)
+
+
+class TestOpenThermApp_control_date_time(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', side_effect=[(MSG_TYPE_WRITE_ACK, DATA_ID_YEAR, 2022),
+                                                            (MSG_TYPE_WRITE_ACK, DATA_ID_DATE, 0x0108),
+                                                            (MSG_TYPE_WRITE_ACK, DATA_ID_DAY_TIME, 0xd70A)])
+    def test_control_date_time(self, mock_opentherm_exchange):
+        control_date_time(datetime.datetime(2022, 1, 8, 23, 10))
+        mock_opentherm_exchange.assert_has_calls([call(MSG_TYPE_WRITE_DATA, DATA_ID_YEAR, 2022),
+                                                   call(MSG_TYPE_WRITE_DATA, DATA_ID_DATE, 0x0108),
+                                                   call(MSG_TYPE_WRITE_DATA, DATA_ID_DAY_TIME, 0xd70A)])
+
+
+class TestOpenThermApp_read_tsp_count(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TSP_COUNT, 0x0102))
+    def test_read_tsp_count(self, mock_opentherm_exchange):
+        result = read_tsp_count()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TSP_COUNT, 0)
+        self.assertEqual(result, 1)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TSP_COUNT, 0x0A0B))
+    def test_read_tsp_count_max(self, mock_opentherm_exchange):
+        result = read_tsp_count()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TSP_COUNT, 0)
+        self.assertEqual(result, 10)
+
+
+class TestOpenThermApp_read_tsp(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TSP_DATA, 0x1234))
+    def test_read_tsp(self, mock_opentherm_exchange):
+        result = read_tsp(0x12)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TSP_DATA, 0x1200)
+        self.assertEqual(result, 0x34)
+
+
+class TestOpenThermApp_read_fhb_count(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_FHB_COUNT, 0x1234))
+    def test_read_fhb_count(self, mock_opentherm_exchange):
+        result = read_fhb_count()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_FHB_COUNT, 0)
+        self.assertEqual(result, 0x12)
+
+class TestOpenThermApp_read_fhb(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_FHB_DATA, 0x1234))
+    def test_read_fhb(self, mock_opentherm_exchange):
+        result = read_fhb(0x12)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, 0x1200)
+        self.assertEqual(result, 0x34)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_FHB_DATA, 0x5678))
+    def test_read_fhb_different_index(self, mock_opentherm_exchange):
+        result = read_fhb(0x56)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, 0x5600)
+        self.assertEqual(result, 0x78)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_FHB_DATA, 0x9ABC))
+    def test_read_fhb_max_value(self, mock_opentherm_exchange):
+        result = read_fhb(0x9A)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, 0x9A00)
+        self.assertEqual(result, 0xBC)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_FHB_DATA, 0x00))
+    def test_read_fhb_min_value(self, mock_opentherm_exchange):
+        result = read_fhb(0x00)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, 0x0000)
+        self.assertEqual(result, 0x00)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_FHB_DATA, 0xFFFF))
+    def test_read_fhb_max_byte_value(self, mock_opentherm_exchange):
+        result = read_fhb(0xFF)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, 0xFF00)
+        self.assertEqual(result, 0xFF)
+
+class TestOpenThermApp_read_remote_override_room_setpoint(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TROVERRIDE, 0x1A00))
+    def test_read_remote_override_room_setpoint(self, mock_opentherm_exchange):
+        result = read_remote_override_room_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TROVERRIDE, 0)
+        self.assertEqual(result, 26.0)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TROVERRIDE, 0x0000))
+    def test_read_remote_override_room_setpoint_zero(self, mock_opentherm_exchange):
+        result = read_remote_override_room_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TROVERRIDE, 0)
+        self.assertEqual(result, 0.0)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TROVERRIDE, 0xFFFF))
+    def test_read_remote_override_room_setpoint_max(self, mock_opentherm_exchange):
+        result = read_remote_override_room_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TROVERRIDE, 0)
+        self.assertEqual(result, -0.00390625)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_TROVERRIDE, 0x8000))
+    def test_read_remote_override_room_setpoint_negative(self, mock_opentherm_exchange):
+        result = read_remote_override_room_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TROVERRIDE, 0)
+        self.assertEqual(result, -128.0)
+
+class TestOpenThermApp_read_remote_override_function(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0b00000011))
+    def test_read_remote_override_function_both_priorities(self, mock_opentherm_exchange):
+        result = read_remote_override_function()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0)
+        self.assertEqual(result, {
+            'manual_change_priority': True,
+            'program_change_priority': True
+        })
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0b00000001))
+    def test_read_remote_override_function_manual_priority(self, mock_opentherm_exchange):
+        result = read_remote_override_function()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0)
+        self.assertEqual(result, {
+            'manual_change_priority': True,
+            'program_change_priority': False
+        })
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0b00000010))
+    def test_read_remote_override_function_program_priority(self, mock_opentherm_exchange):
+        result = read_remote_override_function()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0)
+        self.assertEqual(result, {
+            'manual_change_priority': False,
+            'program_change_priority': True
+        })
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_READ_ACK, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0b00000000))
+    def test_read_remote_override_function_no_priority(self, mock_opentherm_exchange):
+        result = read_remote_override_function()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_REMOTE_OVERRIDE_FUNCTION, 0)
+        self.assertEqual(result, {
+            'manual_change_priority': False,
+            'program_change_priority': False
+        })
+
+class TestOpenThermApp_control_remote_command(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_COMMAND, 10 << 8))
+    def test_control_remote_command(self, mock_opentherm_exchange):
+        result = control_remote_command(10)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, 10 << 8)
+        self.assertEqual(result, 0)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_COMMAND, 0xffff))
+    def test_control_remote_command_max(self, mock_opentherm_exchange):
+        result = control_remote_command(255)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, 0xff00)
+        self.assertEqual(result, 255)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_COMMAND, 0))
+    def test_control_remote_command_min(self, mock_opentherm_exchange):
+        result = control_remote_command(0)
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, 0 << 8)
+        self.assertEqual(result, 0)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, 0))
+    def test_control_remote_command_wrong_msg_type(self, mock_opentherm_exchange):
+        with self.assertRaises(AssertionError):
+            control_remote_command(10)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_STATUS, 0))
+    def test_control_remote_command_wrong_data_id(self, mock_opentherm_exchange):
+        with self.assertRaises(AssertionError):
+            control_remote_command(10)
+
+    @patch('opentherm_app.opentherm_exchange', return_value=(MSG_TYPE_WRITE_ACK, DATA_ID_COMMAND, 0))
+    def test_control_remote_command_wrong_data(self, mock_opentherm_exchange):
+        with self.assertRaises(AssertionError):
+            control_remote_command(10)
 
