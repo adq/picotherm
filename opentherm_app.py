@@ -1,6 +1,6 @@
 from lib import s8, s16, f88
-import datetime
-from typing import Optional
+# import datetime
+# from typing import Optional
 
 try:
     from opentherm_rp2 import opentherm_exchange
@@ -558,27 +558,27 @@ def read_dhw_burner_operation_hours() -> int:
     return r_data
 
 
-def control_date_time(t: Optional[datetime.datetime] = None):
-    if t is None:
-        t = datetime.datetime.now()  # pragma: nocover
+# def control_date_time(t: Optional[datetime.datetime] = None):
+#     if t is None:
+#         t = datetime.datetime.now()  # pragma: nocover
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_YEAR, t.year
-    )
-    assert r_msg_type == MSG_TYPE_WRITE_ACK
-    assert r_data_id == DATA_ID_YEAR
+#     r_msg_type, r_data_id, r_data = opentherm_exchange(
+#         MSG_TYPE_WRITE_DATA, DATA_ID_YEAR, t.year
+#     )
+#     assert r_msg_type == MSG_TYPE_WRITE_ACK
+#     assert r_data_id == DATA_ID_YEAR
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_DATE, (t.month << 8) | t.day
-    )
-    assert r_msg_type == MSG_TYPE_WRITE_ACK
-    assert r_data_id == DATA_ID_DATE
+#     r_msg_type, r_data_id, r_data = opentherm_exchange(
+#         MSG_TYPE_WRITE_DATA, DATA_ID_DATE, (t.month << 8) | t.day
+#     )
+#     assert r_msg_type == MSG_TYPE_WRITE_ACK
+#     assert r_data_id == DATA_ID_DATE
 
-    r_msg_type, r_data_id, r_data = opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_DAY_TIME, (t.isoweekday() << 13) | (t.hour << 8) | t.minute
-    )
-    assert r_msg_type == MSG_TYPE_WRITE_ACK
-    assert r_data_id == DATA_ID_DAY_TIME
+#     r_msg_type, r_data_id, r_data = opentherm_exchange(
+#         MSG_TYPE_WRITE_DATA, DATA_ID_DAY_TIME, (t.isoweekday() << 13) | (t.hour << 8) | t.minute
+#     )
+#     assert r_msg_type == MSG_TYPE_WRITE_ACK
+#     assert r_data_id == DATA_ID_DAY_TIME
 
 
 def read_tsp_count() -> int:
