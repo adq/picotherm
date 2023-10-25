@@ -96,7 +96,7 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
 
     # check we didn't time out
     if sm_opentherm_rx.rx_fifo() < 2:
-        raise TimeoutError("Timeout waiting for response")
+        raise Exception("Timeout waiting for response")
 
     # decode it
     m2 = sm_opentherm_rx.get() | (sm_opentherm_rx.get() << 32)
