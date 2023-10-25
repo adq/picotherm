@@ -9,10 +9,10 @@ def manchester_encode(frame: int) -> int:
     while mask:
         if frame & mask:
             mframe <<= 2
-            mframe |= 1  # remember we need to encode it in reverse
+            mframe |= 2
         else:
             mframe <<= 2
-            mframe |= 2
+            mframe |= 1
         mask >>= 1
 
     return mframe
