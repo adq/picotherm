@@ -9,10 +9,10 @@ def manchester_encode(frame: int) -> int:
     while mask:
         if frame & mask:
             mframe <<= 2
-            mframe |= 2
+            mframe |= 1  # remember we need to encode it in reverse
         else:
             mframe <<= 2
-            mframe |= 1
+            mframe |= 2
         mask >>= 1
 
     return mframe
@@ -48,14 +48,15 @@ def manchester_decode(mframe: int) -> int:
 
 def frame_encode(msg_type: int, data_id: int, data_value: int) -> int:
     """
-    Encodes opentherm info into a 32 bit frame
+    Encodes opentherm info into a 32 bit network ordered frame
     """
 
     frame = 0
-    frame |= (msg_type & 0x07) << 1
-    frame |= (data_id & 0xff) << 8
-    frame |= (data_value & 0xffff) << 16
-    frame |= (bin(frame).count("1") & 1) # parity bit
+    frame |= (msg_type & 0x07) << 28
+    frame |= (data_id & 0xff) << 16
+    frame |= (data_value & 0xffff)
+    if bin(frame).count("1") & 1:  # parity bit
+        frame |= 0x80000000
     return frame
 
 
