@@ -79,17 +79,16 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     while sm_opentherm_rx.rx_fifo():
         sm_opentherm_rx.get()
 
-    # start the receiver pio
-    sm_opentherm_rx.restart()
-    sm_opentherm_rx.active(1)
-
     # send the data using the transmitter pio
     sm_opentherm_tx.put(int(m) >> 32)
     sm_opentherm_tx.put(int(m))
     sm_opentherm_tx.restart()
     sm_opentherm_tx.active(1)
+    time.sleep_ms(40)  # FIXME: wait for the above to finish somehow
 
     # wait for response
+    sm_opentherm_rx.restart()
+    sm_opentherm_rx.active(1)
     timeout = time.ticks_ms() + timeout_ms
     while sm_opentherm_rx.rx_fifo() < 2 and time.ticks_ms() < timeout:
         time.sleep_ms(50)
