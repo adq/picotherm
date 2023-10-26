@@ -40,13 +40,13 @@ def manchester_decode(mframe: int) -> int:
             if mframe & mask2:
                 raise ValueError("Manchester decoding error")
             frame <<= 1
-            frame |= 1
+            frame |= 0
 
         else:
             if not (mframe & mask2):
                 raise ValueError("Manchester decoding error")
             frame <<= 1
-            frame |= 0
+            frame |= 1
         mask >>= 2
         mask2 >>= 2
 

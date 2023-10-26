@@ -43,13 +43,13 @@ def opentherm_rx():
     wait(0, pin, 0)
 
     # kick off initial bit read
-    set(x, 12)  # 13 loops, 3 ticks per loop, 60kHz == 650uS
+    set(x, 14)  # 13 loops, 3 ticks per loop, 60kHz == 650uS
     jmp("wait_for_bit_currently_0")
 
     # read the current bit from the GPIO
     label("read_next_bit")
     in_(pins, 1)
-    set(x, 12)  # 13 loops, 3 ticks per loop, 60kHz == 650uS
+    set(x, 14)  # 13 loops, 3 ticks per loop, 60kHz == 650uS
     jmp(pin, "wait_for_bit_currently_1")
 
     # wait for a bit change from 0->1 or timeout
@@ -71,7 +71,8 @@ sm_opentherm_rx = rp2.StateMachine(4, opentherm_rx, freq=60000, in_base=machine.
 
 
 def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000) -> tuple[int, int, int]:
-    m = manchester_encode(frame_encode(msg_type, data_id, data_value), invert=True)
+    f = frame_encode(msg_type, data_id, data_value)
+    m = manchester_encode(f, invert=True)
 
     # setup pio
     sm_opentherm_tx.active(0)
@@ -98,5 +99,8 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
         raise Exception("Timeout waiting for response")
 
     # decode it
-    m2 = sm_opentherm_rx.get() | (sm_opentherm_rx.get() << 32)
-    return frame_decode(manchester_decode(m2))
+    a = sm_opentherm_rx.get()
+    b = sm_opentherm_rx.get()
+    m2 = (a << 32) | b
+    f2 = manchester_decode(m2)
+    return frame_decode(f2)
