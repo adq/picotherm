@@ -1,18 +1,25 @@
 
-def manchester_encode(frame: int) -> int:
+def manchester_encode(frame: int, invert: bool = False) -> int:
     """
     Manchester encodes a 32 bit frame into a 64 bit integer.
     """
+
+    if invert:
+        one = 1
+        zero = 2
+    else:
+        one = 2
+        zero = 1
 
     mframe = 0
     mask = 0x80000000
     while mask:
         if frame & mask:
             mframe <<= 2
-            mframe |= 2
+            mframe |= one
         else:
             mframe <<= 2
-            mframe |= 1
+            mframe |= zero
         mask >>= 1
 
     return mframe

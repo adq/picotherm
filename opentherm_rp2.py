@@ -5,15 +5,15 @@ from lib import manchester_encode, frame_encode, manchester_decode, frame_decode
 
 
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
-@rp2.asm_pio(set_init=rp2.PIO.OUT_LOW, out_init=rp2.PIO.OUT_LOW, autopull=True, out_shiftdir=rp2.PIO.SHIFT_LEFT)
+@rp2.asm_pio(set_init=rp2.PIO.OUT_HIGH, out_init=rp2.PIO.OUT_HIGH, autopull=True, out_shiftdir=rp2.PIO.SHIFT_LEFT)
 def opentherm_tx():
     # counter for bit writing loop
     set(x, 31)
 
     # write start bit
-    set(pins, 1)
-    nop()
     set(pins, 0)
+    nop()
+    set(pins, 1)
     nop()
 
     # write the manchester encoded data
@@ -24,9 +24,9 @@ def opentherm_tx():
     jmp(x_dec, "write_bits")
 
     # write stop bit
-    set(pins, 1)
-    nop()
     set(pins, 0)
+    nop()
+    set(pins, 1)
     nop()
 
     label("loop")
@@ -71,7 +71,7 @@ sm_opentherm_rx = rp2.StateMachine(4, opentherm_rx, freq=60000, in_base=machine.
 
 
 def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000) -> tuple[int, int, int]:
-    m = manchester_encode(frame_encode(msg_type, data_id, data_value))
+    m = manchester_encode(frame_encode(msg_type, data_id, data_value), invert=True)
 
     # setup pio
     sm_opentherm_tx.active(0)
