@@ -39,7 +39,7 @@ sm_opentherm_tx = rp2.StateMachine(0, opentherm_tx, freq=4000, set_base=machine.
 
 
 # opentherm rx - receive manchester-encoded-bits, waiting for initial start bit
-@rp2.asm_pio(autopush=True, in_shiftdir=rp2.PIO.SHIFT_RIGHT)
+@rp2.asm_pio(autopush=True, in_shiftdir=rp2.PIO.SHIFT_LEFT)
 def opentherm_rx():
     # wait for start bit
     wait(1, pin, 0)
@@ -77,7 +77,7 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     f = frame_encode(msg_type, data_id, data_value)
     m = manchester_encode(f, invert=True)
     if debug:
-        print(f"> {f:08x} {m >> 32:032b} {m & 0xffffffff:032b}")
+        print(f"> {f:08x} {(m >> 48) & 0xff:016b} {(m >> 32) & 0xff:016b} {(m >> 16) & 0xff:016b} {m & 0xff:016b}")
 
     # setup pio
     sm_opentherm_tx.active(0)
@@ -114,5 +114,5 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
         f2 = manchester_decode(m2)
     finally:
         if debug:
-            print(f"< {f2:08x} {m2 >> 32:032b} {m2 & 0xffffffff:032b}")
+            print(f"< {f2:08x} {(m2 >> 48) & 0xff:016b} {(m2 >> 32) & 0xff:016b} {(m2 >> 16) & 0xff:016b} {m2 & 0xff:016b}")
     return frame_decode(f2)
