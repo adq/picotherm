@@ -72,9 +72,11 @@ def opentherm_rx():
 sm_opentherm_rx = rp2.StateMachine(4, opentherm_rx, freq=60000, in_base=machine.Pin(1), jmp_pin=machine.Pin(1)) # each tick is 17uS
 
 
-def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000) -> tuple[int, int, int]:
+def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=True) -> tuple[int, int, int]:
     f = frame_encode(msg_type, data_id, data_value)
     m = manchester_encode(f, invert=True)
+    if debug:
+        print(f"> {f:08x} {m:064b}")
 
     # setup pio
     sm_opentherm_tx.active(0)
@@ -108,4 +110,6 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     b = sm_opentherm_rx.get()
     m2 = (a << 32) | b
     f2 = manchester_decode(m2)
+    if debug:
+        print(f"< {f2:08x} {m2:064b}")
     return frame_decode(f2)
