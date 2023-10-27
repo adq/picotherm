@@ -1,14 +1,10 @@
 import opentherm_app
+from opentherm_rp2 import opentherm_exchange
 import time
 
 
-def test():
-    while True:
-        try:
-            print(opentherm_app.read_secondary_configuration())
-        except Exception as ex:
-            print("error", ex)
-        input("Press a key")
+def readtest(a, b):
+    print(opentherm_exchange(opentherm_app.MSG_TYPE_READ_DATA, a, b))
 
 
 def status():
