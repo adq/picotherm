@@ -90,8 +90,7 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     sm_opentherm_tx.put(int(m))
     sm_opentherm_tx.restart()
     sm_opentherm_tx.active(1)
-    sm_opentherm_tx.get()
-    # time.sleep_ms(40)  # FIXME: wait for the above to finish somehow
+    sm_opentherm_tx.get()  # wait for the pio to finish - don't care about value
     sm_opentherm_tx.active(0)
 
     # wait for response
