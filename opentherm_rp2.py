@@ -76,7 +76,7 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     f = frame_encode(msg_type, data_id, data_value)
     m = manchester_encode(f, invert=True)
     if debug:
-        print(f"> {f:08x} {m:064b}")
+        print(f"> {f:08x} {m >> 32:032b} {m & 0xffffffff:032b}")
 
     # setup pio
     sm_opentherm_tx.active(0)
@@ -114,5 +114,5 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
         f2 = manchester_decode(m2)
     finally:
         if debug:
-            print(f"< {f2:08x} {m2:064b}")
+            print(f"< {f2:08x} {m2 >> 32:032b} {m2 & 0xffffffff:032b}")
     return frame_decode(f2)
