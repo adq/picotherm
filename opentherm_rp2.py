@@ -109,7 +109,10 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     a = sm_opentherm_rx.get()
     b = sm_opentherm_rx.get()
     m2 = (a << 32) | b
-    f2 = manchester_decode(m2)
-    if debug:
-        print(f"< {f2:08x} {m2:064b}")
+    f2 = 0
+    try:
+        f2 = manchester_decode(m2)
+    finally:
+        if debug:
+            print(f"< {f2:08x} {m2:064b}")
     return frame_decode(f2)
