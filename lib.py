@@ -78,9 +78,9 @@ def frame_decode(frame: int) -> tuple[int, int, int]:
     if parity & 1:
         raise ValueError("Parity bit error")
 
-    msg_type = (frame >> 1) & 0x07
-    data_id = (frame >> 8) & 0xff
-    data_value = (frame >> 16) & 0xffff
+    msg_type = (frame >> 28) & 0x07
+    data_id = (frame >> 16) & 0xff
+    data_value = frame & 0xffff
     return msg_type, data_id, data_value
 
 
