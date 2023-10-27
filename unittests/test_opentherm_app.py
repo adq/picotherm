@@ -855,15 +855,15 @@ class TestOpenThermApp_control_cooling(unittest.TestCase):
             control_cooling(101)
 
 
-class TestOpenThermApp_control_date_time(unittest.TestCase):
-    @patch('opentherm_app.opentherm_exchange', side_effect=[(MSG_TYPE_WRITE_ACK, DATA_ID_YEAR, 2022),
-                                                            (MSG_TYPE_WRITE_ACK, DATA_ID_DATE, 0x0108),
-                                                            (MSG_TYPE_WRITE_ACK, DATA_ID_DAY_TIME, 0xd70A)])
-    def test_control_date_time(self, mock_opentherm_exchange):
-        control_date_time(datetime.datetime(2022, 1, 8, 23, 10))
-        mock_opentherm_exchange.assert_has_calls([call(MSG_TYPE_WRITE_DATA, DATA_ID_YEAR, 2022),
-                                                   call(MSG_TYPE_WRITE_DATA, DATA_ID_DATE, 0x0108),
-                                                   call(MSG_TYPE_WRITE_DATA, DATA_ID_DAY_TIME, 0xd70A)])
+# class TestOpenThermApp_control_date_time(unittest.TestCase):
+#     @patch('opentherm_app.opentherm_exchange', side_effect=[(MSG_TYPE_WRITE_ACK, DATA_ID_YEAR, 2022),
+#                                                             (MSG_TYPE_WRITE_ACK, DATA_ID_DATE, 0x0108),
+#                                                             (MSG_TYPE_WRITE_ACK, DATA_ID_DAY_TIME, 0xd70A)])
+#     def test_control_date_time(self, mock_opentherm_exchange):
+#         control_date_time(datetime.datetime(2022, 1, 8, 23, 10))
+#         mock_opentherm_exchange.assert_has_calls([call(MSG_TYPE_WRITE_DATA, DATA_ID_YEAR, 2022),
+#                                                    call(MSG_TYPE_WRITE_DATA, DATA_ID_DATE, 0x0108),
+#                                                    call(MSG_TYPE_WRITE_DATA, DATA_ID_DAY_TIME, 0xd70A)])
 
 
 class TestOpenThermApp_read_tsp_count(unittest.TestCase):

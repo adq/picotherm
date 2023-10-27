@@ -11,22 +11,32 @@ class TestManchester(unittest.TestCase):
         assert manchester_encode(0x55555555) == 0x6666666666666666
         assert manchester_encode(0x12345678) == 0x56595a6566696a95
 
+    def test_manchester_encode_invert(self):
+        assert manchester_encode(0x00000000, invert=True) == 0xaaaaaaaaaaaaaaaa
+        assert manchester_encode(0xFFFFFFFF, invert=True) == 0x5555555555555555
+        assert manchester_encode(0xAAAAAAAA, invert=True) == 0x6666666666666666
+        assert manchester_encode(0x55555555, invert=True) == 0x9999999999999999
+        assert manchester_encode(0x12345678, invert=True) == 0xa9a6a59a9996956a
+
     def test_manchester_decode(self):
-        assert manchester_decode(0x5555555555555555) == 0x00000000
-        assert manchester_decode(0xaaaaaaaaaaaaaaaa) == 0xFFFFFFFF
-        assert manchester_decode(0x9999999999999999) == 0xAAAAAAAA
-        assert manchester_decode(0x6666666666666666) == 0x55555555
-        assert manchester_decode(0x56595a6566696a95) == 0x12345678
+        assert manchester_decode(0x5555555555555555) == 0xFFFFFFFF
+        assert manchester_decode(0xaaaaaaaaaaaaaaaa) == 0
+        assert manchester_decode(0x9999999999999999) == 0x55555555
+        assert manchester_decode(0x6666666666666666) == 0xAAAAAAAA
+        assert manchester_decode(0x56595a6566696a95) == 0xedcba987
         self.assertRaises(ValueError, manchester_decode, 0xfaaaaaaaaaaaaaaa)
         self.assertRaises(ValueError, manchester_decode, 0x0aaaaaaaaaaaaaaa)
+
+    def test_manchester_encode_decode(self):
+        assert manchester_decode(manchester_encode(0xFFFFFFFF, invert=True)) == 0xFFFFFFFF
 
 
 class TestFrame(unittest.TestCase):
 
     def test_frame_encode(self):
         assert frame_encode(0, 0, 0) == 0x00000000
-        assert frame_encode(0xff, 0xff, 0xffff) == 0xffffff0f
-        assert frame_encode(0x07, 0xbb, 0x4278) == 0x4278bb0f
+        assert frame_encode(0xff, 0xff, 0xffff) == 0xf0ffffff
+        assert frame_encode(0x07, 0xbb, 0x4278) == 0xf0bb4278
 
     def test_frame_decode(self):
         assert frame_decode(0x00000000) == (0, 0, 0)
