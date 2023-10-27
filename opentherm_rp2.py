@@ -5,7 +5,7 @@ from lib import manchester_encode, frame_encode, manchester_decode, frame_decode
 
 
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
-@rp2.asm_pio(set_init=rp2.PIO.OUT_HIGH, out_init=rp2.PIO.OUT_HIGH, autopull=True, out_shiftdir=rp2.PIO.SHIFT_LEFT)
+@rp2.asm_pio(autopush=True, set_init=rp2.PIO.OUT_HIGH, out_init=rp2.PIO.OUT_HIGH, autopull=True, out_shiftdir=rp2.PIO.SHIFT_LEFT)
 def opentherm_tx():
     # counter for bit writing loop
     set(x, 31)
