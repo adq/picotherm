@@ -5,12 +5,13 @@ from lib import manchester_encode, frame_encode, manchester_decode, frame_decode
 
 
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
+# note that the hardware is inverted for transmission - HIGH = 0, LOW = 1
 @rp2.asm_pio(autopush=True, set_init=rp2.PIO.OUT_HIGH, out_init=rp2.PIO.OUT_HIGH, autopull=True, out_shiftdir=rp2.PIO.SHIFT_LEFT)
 def opentherm_tx():
     # counter for bit writing loop
     set(x, 31)
 
-    # write start bit
+    # write start bit (hardware bits are inverted!)
     set(pins, 0)
     nop()
     set(pins, 1)
@@ -23,7 +24,7 @@ def opentherm_tx():
     out(pins, 1)
     jmp(x_dec, "write_bits")
 
-    # write stop bit
+    # write stop bit (hardware bits are inverted!)
     set(pins, 0)
     nop()
     set(pins, 1)
