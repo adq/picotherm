@@ -7,7 +7,7 @@ def test():
         try:
             print(opentherm_app.read_secondary_configuration())
         except Exception as ex:
-            print(ex)
+            print("error", ex)
         time.sleep(1)
         input("Press a key")
 
@@ -17,6 +17,5 @@ def test2():
         try:
             print(opentherm_app.read_secondary_configuration())
         except Exception as ex:
-            print(ex)
+            print("error", ex)
         input("Press a key")
-
