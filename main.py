@@ -7,6 +7,10 @@ def readtest(a, b):
     print(opentherm_exchange(opentherm_app.MSG_TYPE_READ_DATA, a, b))
 
 
+def writetest(a, b):
+    print(opentherm_exchange(opentherm_app.MSG_TYPE_WRITE_DATA, a, b))
+
+
 def status():
     while True:
         try:
