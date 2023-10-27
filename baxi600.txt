@@ -24,6 +24,16 @@ OK 57 0x5050        DATA_ID_MAXTSET
 OK 115 0x0          DATA_ID_OEM_DIAGNOSTIC_CODE
 OK 125 0x400        DATA_ID_OPENTHERM_VERSION_SECONDARY
 
+manually tested writeable data_ids
+OK 1                DATA_ID_TSET  (boiler setpoint)
+OK 2                DATA_ID_PRIMARY_CONFIG
+OK 14 0x0           DATA_ID_MAX_REL_MODULATION
+OK 16               DATA_ID_TRSET (room setpoint)
+OK 24               DATA_ID_TR (current room temp)
+OK 56               DATA_ID_TDHWSET (hot water setpoint)
+OK 57               DATA_ID_MAXTSET (max boiler setpoint)
+
+other unknown stuff!
 OK 128 0x3
 OK 129 0x78
 OK 130 0x0
