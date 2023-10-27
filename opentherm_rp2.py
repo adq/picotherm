@@ -29,6 +29,8 @@ def opentherm_tx():
     set(pins, 1)
     nop()
 
+    # indicate that we're done!
+    in_(x, 32)
     label("loop")
     jmp("loop")
 
@@ -85,7 +87,9 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     sm_opentherm_tx.put(int(m))
     sm_opentherm_tx.restart()
     sm_opentherm_tx.active(1)
-    time.sleep_ms(40)  # FIXME: wait for the above to finish somehow
+    sm_opentherm_tx.get()
+    # time.sleep_ms(40)  # FIXME: wait for the above to finish somehow
+    sm_opentherm_tx.active(0)
 
     # wait for response
     sm_opentherm_rx.restart()
@@ -93,6 +97,7 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     timeout = time.ticks_ms() + timeout_ms
     while sm_opentherm_rx.rx_fifo() < 2 and time.ticks_ms() < timeout:
         time.sleep_ms(50)
+    sm_opentherm_rx.active(0)
 
     # check we didn't time out
     if sm_opentherm_rx.rx_fifo() < 2:
