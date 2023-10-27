@@ -44,6 +44,10 @@ class TestFrame(unittest.TestCase):
         assert frame_decode(0xf0bb4278) == (0x07, 0xbb, 0x4278)
         self.assertRaises(ValueError, frame_decode, 0x4278bb0e)
 
+    def test_frame_encode_decode(self):
+        assert frame_decode(frame_encode(0x07, 0xbb, 0x4278)) == (0x07, 0xbb, 0x4278)
+
+
 class TestSS2(unittest.TestCase):
 
     def test_s16(self):
