@@ -23,7 +23,7 @@ def status():
 def status_ch():
     while True:
         try:
-            print(opentherm_app.status_exchange(ch_enabled=True))
+            print(opentherm_app.status_exchange(ch_enabled=True, dhw_enabled=True))
         except Exception as ex:
             print("error", ex)
         time.sleep(1)
