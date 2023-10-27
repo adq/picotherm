@@ -18,3 +18,12 @@ def status():
         except Exception as ex:
             print("error", ex)
         time.sleep(1)
+
+
+def status_ch():
+    while True:
+        try:
+            print(opentherm_app.status_exchange(ch_enabled=True))
+        except Exception as ex:
+            print("error", ex)
+        time.sleep(1)
