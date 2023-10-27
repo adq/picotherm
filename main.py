@@ -23,3 +23,18 @@ def status_ch():
         except Exception as ex:
             print("error", ex)
         time.sleep(1)
+
+
+def scan():
+    for i in range(0, 256):
+        while True:
+            try:
+                msg_type, data_id, data_value = opentherm_exchange(opentherm_app.MSG_TYPE_READ_DATA, i, 0)
+                if msg_type == opentherm_app.MSG_TYPE_READ_ACK:
+                    print("OK", data_id, hex(data_value))
+                    break
+
+            except:
+                time.sleep(1)
+
+        time.sleep(1)
