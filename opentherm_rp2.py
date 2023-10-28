@@ -2,6 +2,7 @@ import machine
 import rp2
 import time
 from lib import manchester_encode, frame_encode, manchester_decode, frame_decode
+import asyncio
 
 
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
@@ -73,7 +74,7 @@ def opentherm_rx():
 sm_opentherm_rx = rp2.StateMachine(4, opentherm_rx, freq=60000, in_base=machine.Pin(1), jmp_pin=machine.Pin(1)) # each tick is 17uS
 
 
-def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=True) -> tuple[int, int, int]:
+async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=True) -> tuple[int, int, int]:
     f = frame_encode(msg_type, data_id, data_value)
     m = manchester_encode(f, invert=True)
     if debug:
@@ -90,7 +91,10 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     sm_opentherm_tx.put(int(m))
     sm_opentherm_tx.restart()
     sm_opentherm_tx.active(1)
-    sm_opentherm_tx.get()  # wait for the pio to finish - don't care about value
+    # wait for the pio to finish - don't care about value
+    while not sm_opentherm_tx.rx_fifo():
+        await asyncio.sleep_ms(1)
+    sm_opentherm_tx.get()
     sm_opentherm_tx.active(0)
 
     # wait for response
@@ -98,7 +102,7 @@ def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms:
     sm_opentherm_rx.active(1)
     timeout = time.ticks_ms() + timeout_ms
     while sm_opentherm_rx.rx_fifo() < 2 and time.ticks_ms() < timeout:
-        time.sleep_ms(50)
+        await asyncio.sleep_ms(10)
     sm_opentherm_rx.active(0)
 
     # check we didn't time out
