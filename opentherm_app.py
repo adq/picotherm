@@ -193,9 +193,6 @@ async def control_ch2_setpoint(setpoint: float):
     assert r_data_id == DATA_ID_TSETCH2
 
 
-# FIXME: can we read the ch setpoint?
-
-
 async def read_dhw_setpoint_range() -> tuple[int, int]:
     r_msg_type, r_data_id, r_data = await opentherm_exchange(
         MSG_TYPE_READ_DATA, DATA_ID_TDHWSET_BOUNDS, 0
@@ -291,36 +288,6 @@ async def read_maxch_setpoint() -> float:
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_MAXTSET
-    return f88(r_data)
-
-
-
-async def read_hcratio_range() -> tuple[int, int]:
-    r_msg_type, r_data_id, r_data = await opentherm_exchange(
-        MSG_TYPE_READ_DATA, DATA_ID_HCRATIO_BOUNDS, 0
-    )
-    assert r_msg_type == MSG_TYPE_READ_ACK
-    assert r_data_id == DATA_ID_HCRATIO_BOUNDS
-
-    return s8(r_data & 0xFF), s8(r_data >> 8)
-
-
-async def control_hcratio(ratio: float):
-    assert ratio >= 0 and ratio <= 100
-
-    r_msg_type, r_data_id, r_data = await opentherm_exchange(
-        MSG_TYPE_WRITE_DATA, DATA_ID_HCRATIO, int(ratio * 256)
-    )
-    assert r_msg_type == MSG_TYPE_WRITE_ACK
-    assert r_data_id == DATA_ID_HCRATIO
-
-
-async def read_hcratio() -> float:
-    r_msg_type, r_data_id, r_data = await opentherm_exchange(
-        MSG_TYPE_READ_DATA, DATA_ID_HCRATIO, 0
-    )
-    assert r_msg_type == MSG_TYPE_READ_ACK
-    assert r_data_id == DATA_ID_HCRATIO
     return f88(r_data)
 
 
@@ -465,24 +432,6 @@ async def read_boiler_return_water_temperature() -> float:
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_TRET
     return f88(r_data)
-
-
-async def read_solar_storage_temperature() -> float:
-    r_msg_type, r_data_id, r_data = await opentherm_exchange(
-        MSG_TYPE_READ_DATA, DATA_ID_TSTORAGE, 0
-    )
-    assert r_msg_type == MSG_TYPE_READ_ACK
-    assert r_data_id == DATA_ID_TSTORAGE
-    return f88(r_data)
-
-
-async def read_solar_collector_temperature() -> float:
-    r_msg_type, r_data_id, r_data = await opentherm_exchange(
-        MSG_TYPE_READ_DATA, DATA_ID_TCOLLECTOR, 0
-    )
-    assert r_msg_type == MSG_TYPE_READ_ACK
-    assert r_data_id == DATA_ID_TCOLLECTOR
-    return s16(r_data)
 
 
 async def read_burner_starts() -> int:
