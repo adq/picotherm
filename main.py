@@ -58,44 +58,154 @@ class BoilerValues():
 boiler_values = BoilerValues()
 
 
+STATUS_LOOP_DELAY_MS = 1000
 GET_DETAILED_STATS_MS = 60 * 1000
 WRITE_SETTINGS_MS = 60 * 1000
+MQTT_PUBLISH_MS = 60 * 1000
 
-SHOWERL_HASS_CONFIG = json.dumps({"device_class": "illuminance",
-                  "state_topic": "homeassistant/sensor/sensorShowerL/state",
-                  "unit_of_measurement": "lx",
-                  "unique_id": "light01ae",
-                  "device": {"identifiers": ["shower01ae"], "name": "Shower"}
-                 })
+BOILER_RETURN_TEMPERATURE_HASS_CONFIG = json.dumps({"device_class": "temperature",
+                                                    "state_topic": "homeassistant/sensor/boilerReturnTemperature/state",
+                                                    "unit_of_measurement": "°C",
+                                                    "unique_id": "boilerReturnTemperature",
+                                                    "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                                    "friendly_name": "Return Temperature",
+                                                    })
 
-SHOWERT_HASS_CONFIG = json.dumps({"device_class": "temperature",
-                  "state_topic": "homeassistant/sensor/sensorShowerT/state",
-                  "unit_of_measurement": "°C",
-                  "unique_id": "temp01ae",
-                  "device": {"identifiers": ["shower01ae"], "name": "Shower"}
-                 })
+BOILER_EXHAUST_TEMPERATURE_HASS_CONFIG = json.dumps({"device_class": "temperature",
+                                                     "state_topic": "homeassistant/sensor/boilerExhaustTemperature/state",
+                                                     "unit_of_measurement": "°C",
+                                                     "unique_id": "boilerExhaustTemperature",
+                                                     "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                                     "friendly_name": "Exhaust Temperature",
+                                                     })
 
-SHOWERH_HASS_CONFIG = json.dumps({"device_class": "humidity",
-                  "state_topic": "homeassistant/sensor/sensorShowerH/state",
-                  "unit_of_measurement": "%",
-                  "unique_id": "hum01ae",
-                  "device": {"identifiers": ["shower01ae"], "name": "Shower"}
-                 })
+BOILER_FAN_SPEED_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/sensor/boilerFanSpeed/state",
+                                           "unit_of_measurement": "rpm",
+                                           "unique_id": "boilerFanSpeed",
+                                           "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                           "friendly_name": "Fan Speed",
+                                           })
 
-SHOWERB_HASS_CONFIG = json.dumps({"device_class": "battery",
-                  "state_topic": "homeassistant/sensor/sensorShowerB/state",
-                  "unit_of_measurement": "%",
-                  "unique_id": "bat01ae",
-                  "device": {"identifiers": ["shower01ae"], "name": "Shower"}
-                 })
+BOILER_MODULATION_LEVEL_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/sensor/boilerModulationLevel/state",
+                                                  "unit_of_measurement": "percent",
+                                                  "unique_id": "boilerModulationLevel",
+                                                  "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                                  "friendly_name": "Current Modulation Level",
+                                                  })
 
-SHOWERFAN_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/fan/fanShower/state",
-                    "command_topic": "homeassistant/fan/fanShower/command",
-                    "percentage_state_topic": "homeassistant/fan/fanShower/pcstate",
-                    "percentage_command_topic": "homeassistant/fan/fanShower/pccommand",
-                    "unique_id": "fan01ae",
-                    "device": {"identifiers": ["shower01ae"], "name": "Shower"}
-                    })
+BOILER_CH_PRESSURE_HASS_CONFIG = json.dumps({"device_class": "pressure",
+                                             "state_topic": "homeassistant/sensor/boilerChPressure/state",
+                                             "unit_of_measurement": "bar",
+                                             "unique_id": "boilerChPressure",
+                                             "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                             "friendly_name": "CH Pressure",
+                                             })
+
+BOILER_DHW_FLOW_RATE_HASS_CONFIG = json.dumps({"device_class": "pressure",
+                                               "state_topic": "homeassistant/sensor/boilerDhwFlowRate/state",
+                                               "unit_of_measurement": "l/min",
+                                               "unique_id": "boilerDhwFlowRate",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "HW Flow Rate",
+                                               })
+
+BOILER_MAX_CAPACITY_HASS_CONFIG = json.dumps({ "device_class": "energy",
+                                               "state_topic": "homeassistant/sensor/boilerMaxCapacity/state",
+                                               "unit_of_measurement": "kWh",
+                                               "unique_id": "boilerMaxCapacity",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Max Capacity",
+                                               })
+
+BOILER_MIN_MODULATION_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/sensor/boilerMinModulationLevel/state",
+                                               "unit_of_measurement": "percent",
+                                               "unique_id": "boilerMinModulationLevel",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Min Modulation Level",
+                                               })
+
+BOILER_FLAME_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
+                                               "state_topic": "homeassistant/binary_sensor/boilerFlameActive/state",
+                                               "unique_id": "boilerFlameActive",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Flame Active",
+                                               })
+
+BOILER_FAULT_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "problem",
+                                               "state_topic": "homeassistant/binary_sensor/boilerFaultActive/state",
+                                               "unique_id": "boilerFaultActive",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Fault",
+                                               })
+
+BOILER_FAULT_LOW_WATER_PRESSURE_HASS_CONFIG = json.dumps({ "device_class": "problem",
+                                               "state_topic": "homeassistant/binary_sensor/boilerFaultLowWaterPressure/state",
+                                               "unique_id": "boilerFaultLowWaterPressure",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Low CH Water Pressure",
+                                               })
+
+BOILER_FAULT_FLAME_HASS_CONFIG = json.dumps({ "device_class": "problem",
+                                               "state_topic": "homeassistant/binary_sensor/boilerFaultFlame/state",
+                                               "unique_id": "boilerFaultFlame",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Flame",
+                                               })
+
+BOILER_FAULT_LOW_AIR_PRESSURE_HASS_CONFIG = json.dumps({ "device_class": "problem",
+                                               "state_topic": "homeassistant/binary_sensor/boilerFaultLowAirPressure/state",
+                                               "unique_id": "boilerFaultLowAirPressure",
+                                               "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                               "friendly_name": "Low Air Pressure",
+                                               })
+
+BOILER_FAULT_HIGH_WATER_TEMPERATURE_HASS_CONFIG = json.dumps({ "device_class": "problem",
+                                                "state_topic": "homeassistant/binary_sensor/boilerHighWaterTemperature/state",
+                                                "unique_id": "boilerHighWaterTemperature",
+                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
+                                                "friendly_name": "High Water Temperature",
+                                                })
+
+# BOILER_FLOW_TEMPERATURE_HASS_CONFIG = json.dumps({"device_class": "temperature",
+#                                                   "state_topic": "homeassistant/sensor/boilerFlowTemperature/state",
+#                                                   "unit_of_measurement": "°C",
+#                                                   "unique_id": "boilerFlowTemperature",
+#                                                   "device": {"identifiers": ["boiler"], "name": "Boiler"},
+#                                                   "friendly_name": "Flow Temperature",
+#                                                   })
+
+# BOILER_CH_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
+#                                                "state_topic": "homeassistant/binary_sensor/boilerChActive/state",
+#                                                "unique_id": "boilerChActive",
+#                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
+#                                                "friendly_name": "Heating Active",
+#                                                })
+
+# BOILER_DHW_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
+#                                                "state_topic": "homeassistant/binary_sensor/boilerDhwActive/state",
+#                                                "unique_id": "boilerDhwActive",
+#                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
+#                                                "friendly_name": "Hot Water Active",
+#                                                })
+
+    # boiler_ch_enabled = True
+    # boiler_flow_temperature_setpoint = 70.0
+
+    # boiler_dhw_enabled = True
+    # boiler_dhw_temperature_setpoint = 65.0
+
+    # boiler_flow_temperature_setpoint_max = 80.0
+    # boiler_room_temperature_setpoint = 0.0
+    # boiler_room_temperature = 0.0
+    # boiler_max_modulation = 100.0
+
+# SHOWERFAN_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/fan/fanShower/state",
+#                     "command_topic": "homeassistant/fan/fanShower/command",
+#                     "percentage_state_topic": "homeassistant/fan/fanShower/pcstate",
+#                     "percentage_command_topic": "homeassistant/fan/fanShower/pccommand",
+#                     "unique_id": "fan01ae",
+#                     "device": {"identifiers": ["shower01ae"], "name": "Shower"}
+#                     })
 
 
 
@@ -106,6 +216,10 @@ async def boiler():
             boiler_values.mark_all_changed()
             last_get_detail_timestamp = 0
             last_write_settings_timestamp = 0
+
+            # I think these are static, so we can just read them once
+            boiler_values.boiler_max_capacity, boiler_values.boiler_min_modulation = await opentherm_app.read_capacity_and_min_modulation()
+
             while True:
                 # normal status exchange, happens every second
                 boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
@@ -124,7 +238,6 @@ async def boiler():
                     boiler_values.boiler_modulation_level = await opentherm_app.read_relative_modulation_level()
                     boiler_values.boiler_ch_pressure = await opentherm_app.read_ch_water_pressure()
                     boiler_values.boiler_dhw_flow_rate = await opentherm_app.read_dhw_flow_rate()
-                    boiler_values.boiler_max_capacity, boiler_values.boiler_min_modulation = await opentherm_app.read_capacity_and_min_modulation()
 
                     fault_flags = await opentherm_app.read_fault_flags()
                     boiler_values.boiler_fault_low_water_pressure = fault_flags['low_water_pressure']
@@ -155,8 +268,8 @@ async def boiler():
                         boiler_values.boiler_max_modulation_changed = False
                     last_write_settings_timestamp = time.ticks_ms()
 
-                # sleep for a sec and then do it all again
-                await asyncio.sleep(1)
+                # sleep and then do it all again
+                await asyncio.sleep_ms(STATUS_LOOP_DELAY_MS)
 
         except Exception as ex:
             print("BOILERFAIL")
@@ -188,6 +301,8 @@ async def conn_callback(client):
 
 
 async def mqtt():
+    global boiler_values
+
     mqtt_async.config['ssid'] = cfgsecrets.WIFI_SSID
     mqtt_async.config['wifi_pw'] = cfgsecrets.WIFI_PASSWORD
     mqtt_async.config['server'] = cfgsecrets.MQTT_HOST
@@ -202,28 +317,40 @@ async def mqtt():
 
             while True:
                 # publish all the config jsons
-                await mqc.publish("homeassistant/sensor/sensorShowerH/config", SHOWERH_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/sensorShowerT/config", SHOWERT_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/sensorShowerB/config", SHOWERB_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/sensorShowerL/config", SHOWERL_HASS_CONFIG)
-                await mqc.publish("homeassistant/fan/fanShower/config", SHOWERFAN_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerReturnTemperature/config", BOILER_RETURN_TEMPERATURE_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerExhaustTemperature/config", BOILER_EXHAUST_TEMPERATURE_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerFanSpeed/config", BOILER_FAN_SPEED_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerModulationLevel/config", BOILER_MODULATION_LEVEL_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerChPressure/config", BOILER_CH_PRESSURE_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerDhwFlowRate/config", BOILER_DHW_FLOW_RATE_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerMaxCapacity/config", BOILER_MAX_CAPACITY_HASS_CONFIG)
+                await mqc.publish("homeassistant/sensor/boilerMinModulationLevel/config", BOILER_MIN_MODULATION_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerFlameActive/config", BOILER_FLAME_ACTIVE_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultActive/config", BOILER_FAULT_ACTIVE_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowWaterPressure/config", BOILER_FAULT_LOW_WATER_PRESSURE_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultFlame/config", BOILER_FAULT_FLAME_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/config", BOILER_FAULT_LOW_AIR_PRESSURE_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/config", BOILER_FAULT_HIGH_WATER_TEMPERATURE_HASS_CONFIG)
 
-                # publish sensor data
-                if (time.ticks_ms() - sensor_last_seen) < 10000:
-                    if sensor_humidity is not None:
-                        await mqc.publish("homeassistant/sensor/sensorShowerH/state", str(round(sensor_humidity, 2)))
-                    if sensor_temperature is not None:
-                        await mqc.publish("homeassistant/sensor/sensorShowerT/state", str(round(sensor_temperature, 2)))
-                    if sensor_battery is not None:
-                        await mqc.publish("homeassistant/sensor/sensorShowerB/state", str(round(sensor_battery, 2)))
+                # publish all the states
+                await mqc.publish("homeassistant/sensor/boilerReturnTemperature/state", str(round(boiler_values.boiler_return_temperature, 2)))
+                await mqc.publish("homeassistant/sensor/boilerExhaustTemperature/state", str(round(boiler_values.boiler_exhaust_temperature, 2)))
+                await mqc.publish("homeassistant/sensor/boilerFanSpeed/state", str(round(boiler_values.boiler_fan_speed, 2)))
+                await mqc.publish("homeassistant/sensor/boilerModulationLevel/state", str(round(boiler_values.boiler_modulation_level, 2)))
+                await mqc.publish("homeassistant/sensor/boilerChPressure/state", str(round(boiler_values.boiler_ch_pressure, 2)))
+                await mqc.publish("homeassistant/sensor/boilerDhwFlowRate/state", str(round(boiler_values.boiler_dhw_flow_rate, 2)))
+                await mqc.publish("homeassistant/sensor/boilerMaxCapacity/state", str(boiler_values.boiler_max_capacity))
+                await mqc.publish("homeassistant/sensor/boilerMinModulationLevel/state", str(boiler_values.boiler_min_modulation))
+                await mqc.publish("homeassistant/binary_sensor/boilerFlameActive/state", 'ON' if boiler_values.boiler_flame_active else 'OFF')
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultActive/state", 'ON' if boiler_values.boiler_fault_active else 'OFF')
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowWaterPressure/state", 'ON' if boiler_values.boiler_fault_low_water_pressure else 'OFF')
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultFlame/state", 'ON' if boiler_values.boiler_fault_flame else 'OFF')
+                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/state", 'ON' if boiler_values.boiler_fault_low_air_pressure else 'OFF')
+                await mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/state", 'ON' if boiler_values.boiler_fault_high_water_temperature else 'OFF')
 
-                # publish fan data
-                if (time.ticks_ms() - fan_last_seen) < 10000:
-                    if fan_illuminance is not None:
-                        await mqc.publish("homeassistant/sensor/sensorShowerL/state", str(round(fan_illuminance)))
-                    await mqc.publish("homeassistant/fan/fanShower/state", 'ON' if fan_desired_boost else 'OFF')
+                # FIXME: the other stuff
 
-                await asyncio.sleep(5)
+                await asyncio.sleep_ms(MQTT_PUBLISH_MS)
 
         except Exception as ex:
             print("MQTTFAIL")
