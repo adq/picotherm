@@ -1,3 +1,4 @@
+import asyncio
 from lib import s8, s16, f88
 
 try:
@@ -89,6 +90,7 @@ async def opentherm_exchange_retry(msg_type: int, data_id: int, data_value: int,
             if retry_count > max_retries:
                 raise
             retry_count += 1
+            await asyncio.sleep_ms(100)
 
 
 async def status_exchange(
@@ -214,7 +216,7 @@ async def read_dhw_setpoint_range() -> tuple[int, int]:
     return s8(r_data & 0xFF), s8(r_data >> 8)
 
 
-async def control_dhw_setpoint(setpoint: int):
+async def control_dhw_setpoint(setpoint: float):
     assert setpoint >= 0 and setpoint <= 100
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
@@ -427,6 +429,15 @@ async def read_exhaust_temperature() -> float:
     return s16(r_data)
 
 
+async def read_fan_speed() -> float:
+    r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
+        MSG_TYPE_READ_DATA, DATA_ID_BOILER_FAN_SPEED, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_BOILER_FAN_SPEED
+    return s16(r_data)  # ??
+
+
 async def read_outside_temperature() -> float:
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_READ_DATA, DATA_ID_TOUTSIDE, 0
@@ -596,7 +607,7 @@ async def read_capacity_and_min_modulation():
     return r_data >> 8, r_data & 0xff
 
 
-async def control_max_relative_modulation_level(l: int):
+async def control_max_relative_modulation_level(l: float):
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, int(l * 256)
     )
