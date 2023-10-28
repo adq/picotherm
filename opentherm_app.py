@@ -334,14 +334,14 @@ def read_extra_boiler_params_support() -> dict:
     assert r_data_id == DATA_ID_RBP_FLAGS
 
     dhw_setpoint = None
-    if r_data & 0x10:
+    if r_data & 0x0100:
         if r_data & 0x01:
             dhw_setpoint = "rw"
         else:
             dhw_setpoint = "ro"
 
     maxch_setpoint = None
-    if r_data & 0x20:
+    if r_data & 0x200:
         if r_data & 0x02:
             maxch_setpoint = "rw"
         else:
