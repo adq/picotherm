@@ -11,6 +11,7 @@ class BoilerValues():
     boiler_flow_temperature: float = 0.0
     boiler_return_temperature: float = 0.0
     boiler_exhaust_temperature: float = 0.0
+    boiler_dhw_temperature: float = 0.0
     boiler_fan_speed: float = 0.0
     boiler_modulation_level: float = 0.0
     boiler_ch_pressure: float = 0.0
@@ -177,7 +178,8 @@ BOILER_CH_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
                                                "name": "Heating Active",
                                                })
 
-BOILER_DHW_HASS_CONFIG = json.dumps({"mode_state_topic": "homeassistant/water_heater/boilerDHW/mode_state",
+BOILER_DHW_HASS_CONFIG = json.dumps({"current_temperature_topic": "homeassistant/water_heater/boilerDHW/current_temperature_state",
+                                     "mode_state_topic": "homeassistant/water_heater/boilerDHW/mode_state",
                                      "power_command_topic": "homeassistant/water_heater/boilerDHW/power_command",
                                      "temperature_command_topic": "homeassistant/water_heater/boilerDHW/setpoint_command",
                                      "temperature_state_topic": "homeassistant/water_heater/boilerDHW/setpoint_state",
@@ -259,6 +261,7 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
         boiler_values.boiler_modulation_level = await opentherm_app.read_relative_modulation_level()
         boiler_values.boiler_ch_pressure = await opentherm_app.read_ch_water_pressure()
         boiler_values.boiler_dhw_flow_rate = await opentherm_app.read_dhw_flow_rate()
+        boiler_values.boiler_dhw_temperature = await opentherm_app.read_dhw_temperature()
 
         fault_flags = await opentherm_app.read_fault_flags()
         boiler_values.boiler_fault_low_water_pressure = fault_flags['low_water_pressure']
@@ -486,7 +489,7 @@ async def mqtt():
                 await mqc.publish("homeassistant/water_heater/boilerCH/setpoint_state", str(round(boiler_values.boiler_flow_temperature_setpoint, 2)))
                 await mqc.publish("homeassistant/binary_sensor/boilerChActive/state", 'ON' if boiler_values.boiler_ch_active else 'OFF')
 
-                await mqc.publish("homeassistant/water_heater/boilerDHW/current_temperature_state", str(round(boiler_values.boiler_flow_temperature, 2)))
+                await mqc.publish("homeassistant/water_heater/boilerDHW/current_temperature_state", str(round(boiler_values.boiler_dhw_temperature, 2)))
                 await mqc.publish("homeassistant/water_heater/boilerDHW/mode_state", 'ON' if boiler_values.boiler_dhw_enabled else 'OFF')
                 await mqc.publish("homeassistant/water_heater/boilerDHW/setpoint_state", str(round(boiler_values.boiler_dhw_temperature_setpoint, 2)))
                 await mqc.publish("homeassistant/binary_sensor/boilerDHWActive/state", 'ON' if boiler_values.boiler_dhw_active else 'OFF')
