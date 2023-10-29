@@ -340,7 +340,7 @@ def msg_callback(topic, msg, retained, qos, dup):
 
     elif topic == b'homeassistant/boiler/boilerCH/setpoint_command':
         try:
-            v = float(msg)
+            v = int(float(msg))
             if v < boiler_values.boiler_flow_temperature_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_setpoint_rangemax:
                 raise ValueError("out of range")
             boiler_values.boiler_flow_temperature_setpoint = v
@@ -355,7 +355,7 @@ def msg_callback(topic, msg, retained, qos, dup):
 
     elif topic == b'homeassistant/boiler/boilerDHW/setpoint_command':
         try:
-            v = float(msg)
+            v = int(float(msg))
             if v < boiler_values.boiler_dhw_temperature_setpoint_rangemin or v > boiler_values.boiler_dhw_temperature_setpoint_rangemax:
                 raise ValueError("out of range")
             boiler_values.boiler_dhw_temperature_setpoint = v
@@ -364,7 +364,7 @@ def msg_callback(topic, msg, retained, qos, dup):
 
     elif topic == b'homeassistant/number/boilerCHFlowSetpointMax/command':
         try:
-            v = float(msg)
+            v = int(float(msg))
             if v < boiler_values.boiler_flow_temperature_max_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_max_setpoint_rangemax:
                 raise ValueError("out of range")
             boiler_values.boiler_flow_temperature_max_setpoint = v
@@ -373,7 +373,7 @@ def msg_callback(topic, msg, retained, qos, dup):
 
     elif topic == b'homeassistant/number/boilerRoomTemperatureSetpoint/command':
         try:
-            v = float(msg)
+            v = int(float(msg))
             if v < boiler_values.boiler_room_temperature_setpoint_rangemin or v > boiler_values.boiler_room_temperature_setpoint_rangemax:
                 raise ValueError("out of range")
             boiler_values.boiler_room_temperature_setpoint = v
@@ -382,7 +382,7 @@ def msg_callback(topic, msg, retained, qos, dup):
 
     elif topic == b'homeassistant/number/boilerRoomTemperature/command':
         try:
-            v = float(msg)
+            v = int(float(msg))
             if v < boiler_values.boiler_room_temperature_rangemin or v > boiler_values.boiler_room_temperature_rangemax:
                 raise ValueError("out of range")
             boiler_values.boiler_room_temperature = v
@@ -391,7 +391,7 @@ def msg_callback(topic, msg, retained, qos, dup):
 
     elif topic == b'homeassistant/number/boilerMaxModulation/command':
         try:
-            v = float(msg)
+            v = int(float(msg))
             if v < boiler_values.boiler_max_modulation_rangemin or v > boiler_values.boiler_max_modulation_rangemax:
                 raise ValueError("out of range")
             boiler_values.boiler_max_modulation = v
