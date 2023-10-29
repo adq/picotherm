@@ -1,4 +1,4 @@
 #!/bin/sh
 
-rshell cp __init__.py cfgsecrets.py debug.py lib.py mqtt_async.py opentherm.py opentherm_rp2.py /pyboard
+rshell cp __init__.py cfgsecrets.py debug.py lib.py mqtt_async.py opentherm_app.py opentherm_rp2.py /pyboard
 # rshell cp main.py /pyboard
