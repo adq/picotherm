@@ -43,3 +43,5 @@ async def scan():
 
         time.sleep(1)
 
+
+# asyncio.run(main())
