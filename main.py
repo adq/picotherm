@@ -28,31 +28,29 @@ class BoilerValues():
     boiler_ch_enabled: bool = True
     boiler_dhw_enabled: bool = True
 
-    # FIXME: determine min/max actual values
-
     boiler_flow_temperature_setpoint: float = 70.0
-    boiler_flow_temperature_setpoint_rangemin: float = 70.0
-    boiler_flow_temperature_setpoint_rangemax: float = 70.0
+    boiler_flow_temperature_setpoint_rangemin: float = 0.0
+    boiler_flow_temperature_setpoint_rangemax: float = 100.0
     boiler_flow_temperature_setpoint_changed: bool = False
 
     boiler_flow_temperature_max_setpoint: float = 80.0
-    boiler_flow_temperature_max_setpoint_rangemin: float = 80.0
-    boiler_flow_temperature_max_setpoint_rangemax: float = 80.0
+    boiler_flow_temperature_max_setpoint_rangemin: float = 0.0
+    boiler_flow_temperature_max_setpoint_rangemax: float = 100.0
     boiler_flow_temperature_max_setpoint_changed: bool = False
 
     boiler_dhw_temperature_setpoint: float = 65.0
-    boiler_dhw_temperature_setpoint_rangemin: float = 65.0
-    boiler_dhw_temperature_setpoint_rangemax: float = 65.0
+    boiler_dhw_temperature_setpoint_rangemin: float = 0.0
+    boiler_dhw_temperature_setpoint_rangemax: float = 100.0
     boiler_dhw_temperature_setpoint_changed: bool = False
 
     boiler_room_temperature_setpoint: float = 0.0
-    boiler_room_temperature_setpoint_rangemin: float = 0.0
-    boiler_room_temperature_setpoint_rangemax: float = 0.0
+    boiler_room_temperature_setpoint_rangemin: float = -40.0
+    boiler_room_temperature_setpoint_rangemax: float = 127.0
     boiler_room_temperature_setpoint_changed: bool = False
 
     boiler_room_temperature: float = 0.0
-    boiler_room_temperature_rangemin: float = 0.0
-    boiler_room_temperature_rangemax: float = 0.0
+    boiler_room_temperature_rangemin: float = -40.0
+    boiler_room_temperature_rangemax: float = 127.0
     boiler_room_temperature_changed: bool = False
 
     boiler_max_modulation: float = 100.0
@@ -177,8 +175,8 @@ BOILER_CH_HASS_CONFIG = json.dumps({"current_temperature_topic": "homeassistant/
                                     "power_command_topic": "homeassistant/boiler/boilerCH/power_command",
                                     "temperature_command_topic": "homeassistant/boiler/boilerCH/setpoint_command",
                                     "temperature_state_topic": "homeassistant/boiler/boilerCH/setpoint_state",
-                                    "min_temp": 40,
-                                    "max_temp": 40,
+                                    "min_temp": boiler_values.boiler_flow_temperature_setpoint_rangemin,
+                                    "max_temp": boiler_values.boiler_flow_temperature_setpoint_rangemax,
                                     "unique_id": "boilerCH",
                                     "temperature_unit": "C",
                                     "device": {"identifiers": ["boiler"], "name": "boiler"},
@@ -196,8 +194,8 @@ BOILER_DHW_HASS_CONFIG = json.dumps({"mode_state_topic": "homeassistant/boiler/b
                                      "power_command_topic": "homeassistant/boiler/boilerDHW/power_command",
                                      "temperature_command_topic": "homeassistant/boiler/boilerDHW/setpoint_command",
                                      "temperature_state_topic": "homeassistant/boiler/boilerDHW/setpoint_state",
-                                     "min_temp": 40,
-                                     "max_temp": 40,
+                                     "min_temp": boiler_values.boiler_dhw_temperature_setpoint_rangemin,
+                                     "max_temp": boiler_values.boiler_dhw_temperature_setpoint_rangemax,
                                      "unique_id": "boilerDHW",
                                      "temperature_unit": "C",
                                      "device": {"identifiers": ["boiler"], "name": "boiler"},
@@ -215,8 +213,8 @@ BOILER_DHW_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
 BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerCHFlowSetpointMax/state",
                                                       "command_topic": "homeassistant/number/boilerCHFlowSetpointMax/command",
                                                       "device_class": "temperature",
-                                                      "min": 40,
-                                                      "max": 40,
+                                                      "min": boiler_values.boiler_flow_temperature_max_setpoint_rangemin,
+                                                      "max": boiler_values.boiler_flow_temperature_max_setpoint_rangemax,
                                                       "unit_of_measurement": "C",
                                                       "unique_id": "boilerCHFlowSetpointMax",
                                                       "device": {"identifiers": ["boiler"], "name": "boiler"},
@@ -226,8 +224,8 @@ BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG = json.dumps({"state_topic": "homeassist
 BOILER_ROOM_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerRoomTemperatureSetpoint/state",
                                                       "command_topic": "homeassistant/number/boilerRoomTemperatureSetpoint/command",
                                                       "device_class": "temperature",
-                                                      "min": 40,
-                                                      "max": 40,
+                                                      "min": boiler_values.boiler_room_temperature_setpoint_rangemin,
+                                                      "max": boiler_values.boiler_room_temperature_setpoint_rangemax,
                                                       "unit_of_measurement": "C",
                                                       "unique_id": "boilerRoomTemperatureSetpoint",
                                                       "device": {"identifiers": ["boiler"], "name": "boiler"},
@@ -237,8 +235,8 @@ BOILER_ROOM_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps({"state_topic": "homea
 BOILER_ROOM_TEMPERATURE_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerRoomTemperature/state",
                                                   "command_topic": "homeassistant/number/boilerRoomTemperature/command",
                                                   "device_class": "temperature",
-                                                  "min": 40,
-                                                  "max": 40,
+                                                  "min": boiler_values.boiler_room_temperature_rangemin,
+                                                  "max": boiler_values.boiler_room_temperature_rangemax,
                                                   "unit_of_measurement": "C",
                                                   "unique_id": "boilerRoomTemperature",
                                                   "device": {"identifiers": ["boiler"], "name": "boiler"},
@@ -247,8 +245,8 @@ BOILER_ROOM_TEMPERATURE_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/
 
 BOILER_MAX_MODULATION_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerMaxModulation/state",
                                                 "command_topic": "homeassistant/number/boilerMaxModulation/command",
-                                                "min": 0,
-                                                "max": 100,
+                                                "min": boiler_values.boiler_max_modulation_rangemin,
+                                                "max": boiler_values.boiler_max_modulation_rangemax,
                                                 "unit_of_measurement": "%",
                                                 "unique_id": "boilerMaxModulation",
                                                 "device": {"identifiers": ["boiler"], "name": "boiler"},
@@ -259,26 +257,39 @@ BOILER_MAX_MODULATION_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/nu
 
 async def boiler():
     global boiler_values
+    global BOILER_MAX_MODULATION_HASS_CONFIG, BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG, BOILER_DHW_HASS_CONFIG
+
     while True:
         try:
             boiler_values.mark_all_changed()
             last_get_detail_timestamp: int = 0
             last_write_settings_timestamp: int = 0
 
-            # I think these are static, so we can just read them once
+            # try and read the limits we're able to; rely on defaults if they fail.
+            # I assume these are static, so we can just read them once
             try:
                 boiler_values.boiler_max_capacity, boiler_values.boiler_max_modulation_rangemin = await opentherm_app.read_capacity_and_min_modulation()
+                tmp = json.loads(BOILER_MAX_MODULATION_HASS_CONFIG)
+                tmp['min'] = boiler_values.boiler_max_modulation_rangemin
+                BOILER_MAX_MODULATION_HASS_CONFIG = json.dumps(tmp)
             except:
                 pass
             try:
                 boiler_values.boiler_dhw_temperature_setpoint_rangemin, boiler_values.boiler_dhw_temperature_setpoint_rangemax = await opentherm_app.read_dhw_setpoint_range()
+                tmp = json.loads(BOILER_DHW_HASS_CONFIG)
+                tmp['min_temp'] = boiler_values.boiler_dhw_temperature_setpoint_rangemin
+                tmp['max_temp'] = boiler_values.boiler_dhw_temperature_setpoint_rangemax
+                BOILER_DHW_HASS_CONFIG = json.dumps(tmp)
             except:
                 pass
             try:
                 boiler_values.boiler_flow_temperature_max_setpoint_rangemin, boiler_values.boiler_flow_temperature_max_setpoint_rangemax = await opentherm_app.read_maxch_setpoint_range()
+                tmp = json.loads(BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG)
+                tmp['min'] = boiler_values.boiler_flow_temperature_max_setpoint_rangemin
+                tmp['max'] = boiler_values.boiler_flow_temperature_max_setpoint_rangemax
+                BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG = json.dumps(tmp)
             except:
                 pass
-            # FIXME: update HASS configs to match
 
             while True:
                 # normal status exchange, happens every second ish
