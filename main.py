@@ -42,14 +42,6 @@ class BoilerValues():
     boiler_dhw_temperature_setpoint_rangemin: float = 0.0
     boiler_dhw_temperature_setpoint_rangemax: float = 100.0
 
-    boiler_room_temperature_setpoint: float = 0.0
-    boiler_room_temperature_setpoint_rangemin: float = -40.0
-    boiler_room_temperature_setpoint_rangemax: float = 127.0
-
-    boiler_room_temperature: float = 0.0
-    boiler_room_temperature_rangemin: float = -40.0
-    boiler_room_temperature_rangemax: float = 127.0
-
     boiler_max_modulation: float = 100.0
     boiler_max_modulation_rangemin: float = 0.0
     boiler_max_modulation_rangemax: float = 100.0
@@ -58,9 +50,9 @@ boiler_values = BoilerValues()
 
 
 STATUS_LOOP_DELAY_MS = 900
-GET_DETAILED_STATS_MS = 60 * 1000
-WRITE_SETTINGS_MS = 60 * 1000
-MQTT_PUBLISH_MS = 60 * 1000
+GET_DETAILED_STATS_MS = 10 * 1000
+WRITE_SETTINGS_MS = 10 * 1000
+MQTT_PUBLISH_MS = 10 * 1000
 
 BOILER_RETURN_TEMPERATURE_HASS_CONFIG = json.dumps({"device_class": "temperature",
                                                     "state_topic": "homeassistant/sensor/boilerReturnTemperature/state",
@@ -236,28 +228,6 @@ BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG = json.dumps({"state_topic": "homeassist
                                                       "name": "CH Flow Setpoint Max",
                                                       })
 
-BOILER_ROOM_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerRoomTemperatureSetpoint/state",
-                                                      "command_topic": "homeassistant/number/boilerRoomTemperatureSetpoint/command",
-                                                      "device_class": "temperature",
-                                                      "min": boiler_values.boiler_room_temperature_setpoint_rangemin,
-                                                      "max": boiler_values.boiler_room_temperature_setpoint_rangemax,
-                                                      "unit_of_measurement": "C",
-                                                      "unique_id": "boilerRoomTemperatureSetpoint",
-                                                      "device": {"identifiers": ["boiler"], "name": "boiler"},
-                                                      "name": "Room Temperature Setpoint",
-                                                      })
-
-BOILER_ROOM_TEMPERATURE_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerRoomTemperature/state",
-                                                  "command_topic": "homeassistant/number/boilerRoomTemperature/command",
-                                                  "device_class": "temperature",
-                                                  "min": boiler_values.boiler_room_temperature_rangemin,
-                                                  "max": boiler_values.boiler_room_temperature_rangemax,
-                                                  "unit_of_measurement": "C",
-                                                  "unique_id": "boilerRoomTemperature",
-                                                  "device": {"identifiers": ["boiler"], "name": "boiler"},
-                                                  "name": "Room Temperature Setpoint",
-                                                  })
-
 BOILER_MAX_MODULATION_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/number/boilerMaxModulation/state",
                                                 "command_topic": "homeassistant/number/boilerMaxModulation/command",
                                                 "min": boiler_values.boiler_max_modulation_rangemin,
@@ -298,17 +268,13 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
 
     # write any changed things to the boiler
     if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
-        if await opentherm_app.read_ch_setpoint() != boiler_values.boiler_flow_temperature_setpoint:
+        if int(await opentherm_app.read_ch_setpoint()) != boiler_values.boiler_flow_temperature_setpoint:
             await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
-        if await opentherm_app.read_maxch_setpoint() != boiler_values.boiler_flow_temperature_max_setpoint:
+        if int(await opentherm_app.read_maxch_setpoint()) != boiler_values.boiler_flow_temperature_max_setpoint:
             await opentherm_app.control_maxch_setpoint(boiler_values.boiler_flow_temperature_max_setpoint)
-        if await opentherm_app.read_dhw_setpoint() != boiler_values.boiler_dhw_temperature_setpoint:
+        if int(await opentherm_app.read_dhw_setpoint()) != boiler_values.boiler_dhw_temperature_setpoint:
             await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
-        # if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
-        #     await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
-        # if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
-        #     await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
-        if await opentherm_app.read_max_relative_modulation_level() != boiler_values.boiler_max_modulation:
+        if int(await opentherm_app.read_max_relative_modulation_level()) != boiler_values.boiler_max_modulation:
             await opentherm_app.control_max_relative_modulation_level(boiler_values.boiler_max_modulation)
         last_write_settings_timestamp = time.ticks_ms()
 
@@ -409,24 +375,6 @@ def msg_callback(topic, msg, retained, qos, dup):
         except ValueError:
             pass
 
-    elif topic == b'homeassistant/number/boilerRoomTemperatureSetpoint/command':
-        try:
-            v = int(float(msg))
-            if v < boiler_values.boiler_room_temperature_setpoint_rangemin or v > boiler_values.boiler_room_temperature_setpoint_rangemax:
-                raise ValueError("out of range")
-            boiler_values.boiler_room_temperature_setpoint = v
-        except ValueError:
-            pass
-
-    elif topic == b'homeassistant/number/boilerRoomTemperature/command':
-        try:
-            v = int(float(msg))
-            if v < boiler_values.boiler_room_temperature_rangemin or v > boiler_values.boiler_room_temperature_rangemax:
-                raise ValueError("out of range")
-            boiler_values.boiler_room_temperature = v
-        except ValueError:
-            pass
-
     elif topic == b'homeassistant/number/boilerMaxModulation/command':
         try:
             v = int(float(msg))
@@ -443,8 +391,6 @@ async def conn_callback(client):
     await client.subscribe('homeassistant/switch/boilerDHWEnabled/command')
     await client.subscribe('homeassistant/number/boilerDHWFlowTemperatureSetpoint/command')
     await client.subscribe('homeassistant/number/boilerCHFlowSetpointMax/command')
-    await client.subscribe('homeassistant/number/boilerRoomTemperatureSetpoint/command')
-    await client.subscribe('homeassistant/number/boilerRoomTemperature/command')
     await client.subscribe('homeassistant/number/boilerMaxModulation/command')
 
 
@@ -490,8 +436,6 @@ async def mqtt():
                 await mqc.publish("homeassistant/binary_sensor/boilerDHWActive/config", BOILER_DHW_ACTIVE_HASS_CONFIG)
 
                 await mqc.publish("homeassistant/number/boilerCHFlowSetpointMax/config", BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG)
-                await mqc.publish("homeassistant/number/boilerRoomTemperatureSetpoint/config", BOILER_ROOM_TEMPERATURE_SETPOINT_HASS_CONFIG)
-                await mqc.publish("homeassistant/number/boilerRoomTemperature/config", BOILER_ROOM_TEMPERATURE_HASS_CONFIG)
                 await mqc.publish("homeassistant/number/boilerMaxModulation/config", BOILER_MAX_MODULATION_HASS_CONFIG)
 
                 # publish all the states
@@ -510,8 +454,6 @@ async def mqtt():
                 await mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/state", 'ON' if boiler_values.boiler_fault_high_water_temperature else 'OFF')
 
                 await mqc.publish("homeassistant/number/boilerCHFlowSetpointMax/state", str(round(boiler_values.boiler_flow_temperature_max_setpoint, 2)))
-                await mqc.publish("homeassistant/number/boilerRoomTemperatureSetpoint/state", str(round(boiler_values.boiler_room_temperature_setpoint, 2)))
-                await mqc.publish("homeassistant/number/boilerRoomTemperature/state", str(round(boiler_values.boiler_room_temperature, 2)))
                 await mqc.publish("homeassistant/number/boilerMaxModulation/state", str(round(boiler_values.boiler_max_modulation, 2)))
 
                 await mqc.publish("homeassistant/sensor/boilerCHFlowTemperature/state", str(round(boiler_values.boiler_flow_temperature, 2)))
