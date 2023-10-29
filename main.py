@@ -324,7 +324,7 @@ async def boiler():
 
         except Exception as ex:
             print("BOILERFAIL")
-            sys.print_exception()
+            sys.print_exception(ex)
             await asyncio.sleep(5)
 
 
@@ -486,7 +486,7 @@ async def mqtt():
 
         except Exception as ex:
             print("MQTTFAIL")
-            sys.print_exception()
+            sys.print_exception(ex)
             await asyncio.sleep(5)
 
 
