@@ -85,6 +85,8 @@ async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeo
     sm_opentherm_rx.active(0)
     while sm_opentherm_rx.rx_fifo():
         sm_opentherm_rx.get()
+    while sm_opentherm_tx.rx_fifo():
+        sm_opentherm_tx.get()
 
     # send the data using the transmitter pio
     sm_opentherm_tx.put(int(m) >> 32)
