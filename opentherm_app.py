@@ -85,12 +85,12 @@ async def opentherm_exchange_retry(msg_type: int, data_id: int, data_value: int,
     retry_count = 0
     while True:
         try:
+            await asyncio.sleep_ms(100)
             return await opentherm_exchange(msg_type, data_id, data_value, timeout_ms)
         except:
             if retry_count > max_retries:
                 raise
             retry_count += 1
-            await asyncio.sleep_ms(100)
 
 
 async def status_exchange(

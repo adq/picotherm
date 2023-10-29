@@ -253,7 +253,6 @@ async def boiler():
             # try and read the limits we're able to; rely on defaults if they fail.
             # I assume these are static, so we can just read them once
             try:
-                await asyncio.sleep_ms(100)
                 boiler_values.boiler_max_capacity, boiler_values.boiler_max_modulation_rangemin = await opentherm_app.read_capacity_and_min_modulation()
                 tmp = json.loads(BOILER_MAX_MODULATION_HASS_CONFIG)
                 tmp['min'] = boiler_values.boiler_max_modulation_rangemin
@@ -261,7 +260,6 @@ async def boiler():
             except:
                 pass
             try:
-                await asyncio.sleep_ms(100)
                 boiler_values.boiler_dhw_temperature_setpoint_rangemin, boiler_values.boiler_dhw_temperature_setpoint_rangemax = await opentherm_app.read_dhw_setpoint_range()
                 tmp = json.loads(BOILER_DHW_HASS_CONFIG)
                 tmp['min_temp'] = boiler_values.boiler_dhw_temperature_setpoint_rangemin
@@ -270,7 +268,6 @@ async def boiler():
             except:
                 pass
             try:
-                await asyncio.sleep_ms(100)
                 boiler_values.boiler_flow_temperature_max_setpoint_rangemin, boiler_values.boiler_flow_temperature_max_setpoint_rangemax = await opentherm_app.read_maxch_setpoint_range()
                 tmp = json.loads(BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG)
                 tmp['min'] = boiler_values.boiler_flow_temperature_max_setpoint_rangemin
@@ -281,7 +278,6 @@ async def boiler():
 
             while True:
                 # normal status exchange, happens every second ish
-                await asyncio.sleep_ms(100)
                 boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
                                                                     dhw_enabled=boiler_values.boiler_dhw_enabled)
                 boiler_values.boiler_flame_active = boiler_status['flame_active']
@@ -291,22 +287,14 @@ async def boiler():
 
                 # retrieve detailed stats
                 if (time.ticks_ms() - last_get_detail_timestamp) > GET_DETAILED_STATS_MS:
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_flow_temperature = await opentherm_app.read_boiler_flow_temperature()
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_return_temperature = await opentherm_app.read_boiler_return_water_temperature()
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_exhaust_temperature = await opentherm_app.read_exhaust_temperature()
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_fan_speed = await opentherm_app.read_fan_speed()
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_modulation_level = await opentherm_app.read_relative_modulation_level()
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_ch_pressure = await opentherm_app.read_ch_water_pressure()
-                    await asyncio.sleep_ms(100)
                     boiler_values.boiler_dhw_flow_rate = await opentherm_app.read_dhw_flow_rate()
 
-                    await asyncio.sleep_ms(100)
                     fault_flags = await opentherm_app.read_fault_flags()
                     boiler_values.boiler_fault_low_water_pressure = fault_flags['low_water_pressure']
                     boiler_values.boiler_fault_flame = fault_flags['flame_fault']
@@ -316,29 +304,17 @@ async def boiler():
 
                 # write any changed things to the boiler
                 if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
-                    await asyncio.sleep_ms(100)
                     if await opentherm_app.read_ch_setpoint() != boiler_values.boiler_flow_temperature_setpoint:
-                        await asyncio.sleep_ms(100)
                         await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
-                    await asyncio.sleep_ms(100)
                     if await opentherm_app.read_maxch_setpoint() != boiler_values.boiler_flow_temperature_max_setpoint:
-                        await asyncio.sleep_ms(100)
                         await opentherm_app.control_maxch_setpoint(boiler_values.boiler_flow_temperature_max_setpoint)
-                    await asyncio.sleep_ms(100)
                     if await opentherm_app.read_dhw_setpoint() != boiler_values.boiler_dhw_temperature_setpoint:
-                        await asyncio.sleep_ms(100)
                         await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
-                    await asyncio.sleep_ms(100)
                     if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
-                        await asyncio.sleep_ms(100)
                         await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
-                    await asyncio.sleep_ms(100)
                     if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
-                        await asyncio.sleep_ms(100)
                         await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
-                    await asyncio.sleep_ms(100)
                     if await opentherm_app.read_max_relative_modulation_level() != boiler_values.boiler_max_modulation:
-                        await asyncio.sleep_ms(100)
                         await opentherm_app.control_max_relative_modulation_level(boiler_values.boiler_max_modulation)
                     last_write_settings_timestamp = time.ticks_ms()
 
