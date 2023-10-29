@@ -263,7 +263,7 @@ async def boiler():
             boiler_values.boiler_max_capacity, boiler_values.boiler_min_modulation = await opentherm_app.read_capacity_and_min_modulation()
 
             while True:
-                # normal status exchange, happens every second
+                # normal status exchange, happens every second ish
                 boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
                                                                     dhw_enabled=boiler_values.boiler_dhw_enabled)
                 boiler_values.boiler_flame_active = boiler_status['flame_active']
@@ -324,29 +324,41 @@ async def boiler():
 def msg_callback(topic, msg, retained, qos, dup):
     global boiler_values
 
+        # if msg == b'ON':
+        #     fan_desired_boost = True
+        # else:
+        #     fan_desired_boost = False
+
     if topic == b'homeassistant/boiler/boilerCH/power_command':
         pass  # FIXME
+        boiler_values.boiler_ch_enabled = True
 
     elif topic == b'homeassistant/boiler/boilerCH/setpoint_command':
         pass  # FIXME
+        boiler_values.boiler_flow_temperature_setpoint_changed = True
 
     elif topic == b'homeassistant/boiler/boilerDHW/power_command':
         pass  # FIXME
 
     elif topic == b'homeassistant/boiler/boilerDHW/setpoint_command':
         pass  # FIXME
+        boiler_values.boiler_dhw_temperature_setpoint_changed = True
 
     elif topic == b'homeassistant/number/boilerCHFlowSetpointMax/command':
         pass  # FIXME
+        boiler_values.boiler_flow_temperature_setpoint_max_changed = True
 
     elif topic == b'homeassistant/number/boilerRoomTemperatureSetpoint/command':
         pass  # FIXME
+        boiler_values.boiler_room_temperature_setpoint_changed = True
 
     elif topic == b'homeassistant/number/boilerRoomTemperature/command':
         pass  # FIXME
+        boiler_values.boiler_room_temperature_changed = True
 
     elif topic == b'homeassistant/number/boilerMaxModulation/command':
         pass  # FIXME
+        boiler_values.boiler_max_modulation_changed = True
 
 
 async def conn_callback(client):
