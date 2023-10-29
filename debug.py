@@ -44,4 +44,6 @@ async def scan():
         time.sleep(1)
 
 
-# asyncio.run(main())
+import debug
+import asyncio
+asyncio.run(debug.readtest(0, 0))

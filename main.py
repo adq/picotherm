@@ -4,6 +4,7 @@ import asyncio
 import mqtt_async
 import cfgsecrets
 import json
+import traceback
 
 class BoilerValues():
     # readable things
@@ -323,8 +324,7 @@ async def boiler():
 
         except Exception as ex:
             print("BOILERFAIL")
-            print(ex)
-            # raise
+            traceback.print_exc()
             await asyncio.sleep(5)
 
 
@@ -486,8 +486,7 @@ async def mqtt():
 
         except Exception as ex:
             print("MQTTFAIL")
-            print(ex)
-            # raise
+            traceback.print_exc()
             await asyncio.sleep(5)
 
 
