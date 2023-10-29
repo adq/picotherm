@@ -157,11 +157,11 @@ BOILER_FAULT_HIGH_WATER_TEMPERATURE_HASS_CONFIG = json.dumps({ "device_class": "
                                                 "name": "High Water Temperature",
                                                 })
 
-BOILER_CH_HASS_CONFIG = json.dumps({"current_temperature_topic": "homeassistant/boiler/boilerCH/current_temperature_state",
-                                    "mode_state_topic": "homeassistant/boiler/boilerCH/mode_state",
-                                    "power_command_topic": "homeassistant/boiler/boilerCH/power_command",
-                                    "temperature_command_topic": "homeassistant/boiler/boilerCH/setpoint_command",
-                                    "temperature_state_topic": "homeassistant/boiler/boilerCH/setpoint_state",
+BOILER_CH_HASS_CONFIG = json.dumps({"current_temperature_topic": "homeassistant/water_heater/boilerCH/current_temperature_state",
+                                    "mode_state_topic": "homeassistant/water_heater/boilerCH/mode_state",
+                                    "power_command_topic": "homeassistant/water_heater/boilerCH/power_command",
+                                    "temperature_command_topic": "homeassistant/water_heater/boilerCH/setpoint_command",
+                                    "temperature_state_topic": "homeassistant/water_heater/boilerCH/setpoint_state",
                                     "min_temp": boiler_values.boiler_flow_temperature_setpoint_rangemin,
                                     "max_temp": boiler_values.boiler_flow_temperature_setpoint_rangemax,
                                     "unique_id": "boilerCH",
@@ -171,16 +171,16 @@ BOILER_CH_HASS_CONFIG = json.dumps({"current_temperature_topic": "homeassistant/
                                     })
 
 BOILER_CH_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
-                                               "state_topic": "homeassistant/binary_sensor/boilerChActive/state",
-                                               "unique_id": "boilerChActive",
+                                               "state_topic": "homeassistant/binary_sensor/boilerCHActive/state",
+                                               "unique_id": "boilerCHActive",
                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
                                                "name": "Heating Active",
                                                })
 
-BOILER_DHW_HASS_CONFIG = json.dumps({"mode_state_topic": "homeassistant/boiler/boilerDHW/mode_state",
-                                     "power_command_topic": "homeassistant/boiler/boilerDHW/power_command",
-                                     "temperature_command_topic": "homeassistant/boiler/boilerDHW/setpoint_command",
-                                     "temperature_state_topic": "homeassistant/boiler/boilerDHW/setpoint_state",
+BOILER_DHW_HASS_CONFIG = json.dumps({"mode_state_topic": "homeassistant/water_heater/boilerDHW/mode_state",
+                                     "power_command_topic": "homeassistant/water_heater/boilerDHW/power_command",
+                                     "temperature_command_topic": "homeassistant/water_heater/boilerDHW/setpoint_command",
+                                     "temperature_state_topic": "homeassistant/water_heater/boilerDHW/setpoint_state",
                                      "min_temp": boiler_values.boiler_dhw_temperature_setpoint_rangemin,
                                      "max_temp": boiler_values.boiler_dhw_temperature_setpoint_rangemax,
                                      "unique_id": "boilerDHW",
@@ -190,8 +190,8 @@ BOILER_DHW_HASS_CONFIG = json.dumps({"mode_state_topic": "homeassistant/boiler/b
                                      })
 
 BOILER_DHW_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
-                                               "state_topic": "homeassistant/binary_sensor/boilerDhwActive/state",
-                                               "unique_id": "boilerDhwActive",
+                                               "state_topic": "homeassistant/binary_sensor/boilerDHWActive/state",
+                                               "unique_id": "boilerDHWActive",
                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
                                                "name": "Hot Water Active",
                                                })
@@ -311,10 +311,10 @@ async def boiler():
                         await opentherm_app.control_maxch_setpoint(boiler_values.boiler_flow_temperature_max_setpoint)
                     if await opentherm_app.read_dhw_setpoint() != boiler_values.boiler_dhw_temperature_setpoint:
                         await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
-                    if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
-                        await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
-                    if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
-                        await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
+                    # if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
+                    #     await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
+                    # if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
+                    #     await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
                     if await opentherm_app.read_max_relative_modulation_level() != boiler_values.boiler_max_modulation:
                         await opentherm_app.control_max_relative_modulation_level(boiler_values.boiler_max_modulation)
                     last_write_settings_timestamp = time.ticks_ms()
@@ -332,13 +332,13 @@ async def boiler():
 def msg_callback(topic, msg, retained, qos, dup):
     global boiler_values
 
-    if topic == b'homeassistant/boiler/boilerCH/power_command':
+    if topic == b'homeassistant/water_heater/boilerCH/power_command':
         if msg == b'ON':
             boiler_values.boiler_ch_enabled = True
         elif msg == b'OFF':
             boiler_values.boiler_ch_enabled = False
 
-    elif topic == b'homeassistant/boiler/boilerCH/setpoint_command':
+    elif topic == b'homeassistant/water_heater/boilerCH/setpoint_command':
         try:
             v = int(float(msg))
             if v < boiler_values.boiler_flow_temperature_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_setpoint_rangemax:
@@ -347,13 +347,13 @@ def msg_callback(topic, msg, retained, qos, dup):
         except ValueError:
             pass
 
-    elif topic == b'homeassistant/boiler/boilerDHW/power_command':
+    elif topic == b'homeassistant/water_heater/boilerDHW/power_command':
         if msg == b'ON':
             boiler_values.boiler_dhw_enabled = True
         elif msg == b'OFF':
             boiler_values.boiler_dhw_enabled = False
 
-    elif topic == b'homeassistant/boiler/boilerDHW/setpoint_command':
+    elif topic == b'homeassistant/water_heater/boilerDHW/setpoint_command':
         try:
             v = int(float(msg))
             if v < boiler_values.boiler_dhw_temperature_setpoint_rangemin or v > boiler_values.boiler_dhw_temperature_setpoint_rangemax:
@@ -400,10 +400,10 @@ def msg_callback(topic, msg, retained, qos, dup):
 
 
 async def conn_callback(client):
-    await client.subscribe('homeassistant/boiler/boilerCH/power_command')
-    await client.subscribe('homeassistant/boiler/boilerCH/setpoint_command')
-    await client.subscribe('homeassistant/boiler/boilerDHW/power_command')
-    await client.subscribe('homeassistant/boiler/boilerDHW/setpoint_command')
+    await client.subscribe('homeassistant/water_heater/boilerCH/power_command')
+    await client.subscribe('homeassistant/water_heater/boilerCH/setpoint_command')
+    await client.subscribe('homeassistant/water_heater/boilerDHW/power_command')
+    await client.subscribe('homeassistant/water_heater/boilerDHW/setpoint_command')
     await client.subscribe('homeassistant/number/boilerCHFlowSetpointMax/command')
     await client.subscribe('homeassistant/number/boilerRoomTemperatureSetpoint/command')
     await client.subscribe('homeassistant/number/boilerRoomTemperature/command')
@@ -441,10 +441,10 @@ async def mqtt():
                 await mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/config", BOILER_FAULT_LOW_AIR_PRESSURE_HASS_CONFIG)
                 await mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/config", BOILER_FAULT_HIGH_WATER_TEMPERATURE_HASS_CONFIG)
 
-                await mqc.publish("homeassistant/boiler/boilerCH/config", BOILER_CH_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerChActive/config", BOILER_CH_ACTIVE_HASS_CONFIG)
+                await mqc.publish("homeassistant/water_heater/boilerCH/config", BOILER_CH_HASS_CONFIG)
+                await mqc.publish("homeassistant/binary_sensor/boilerCHActive/config", BOILER_CH_ACTIVE_HASS_CONFIG)
 
-                await mqc.publish("homeassistant/boiler/boilerDHW/config", BOILER_DHW_HASS_CONFIG)
+                await mqc.publish("homeassistant/water_heater/boilerDHW/config", BOILER_DHW_HASS_CONFIG)
                 await mqc.publish("homeassistant/binary_sensor/boilerDHWActive/config", BOILER_DHW_ACTIVE_HASS_CONFIG)
 
                 await mqc.publish("homeassistant/number/boilerCHFlowSetpointMax/config", BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG)
@@ -472,14 +472,14 @@ async def mqtt():
                 await mqc.publish("homeassistant/number/boilerRoomTemperature/state", str(round(boiler_values.boiler_room_temperature, 2)))
                 await mqc.publish("homeassistant/number/boilerMaxModulation/state", str(round(boiler_values.boiler_max_modulation, 2)))
 
-                await mqc.publish("homeassistant/boiler/boilerCH/current_temperature_state", str(round(boiler_values.boiler_flow_temperature, 2)))
-                await mqc.publish("homeassistant/boiler/boilerCH/mode_state", 'ON' if boiler_values.boiler_ch_enabled else 'OFF')
-                await mqc.publish("homeassistant/boiler/boilerCH/setpoint_state", str(round(boiler_values.boiler_flow_temperature_setpoint, 2)))
+                await mqc.publish("homeassistant/water_heater/boilerCH/current_temperature_state", str(round(boiler_values.boiler_flow_temperature, 2)))
+                await mqc.publish("homeassistant/water_heater/boilerCH/mode_state", 'ON' if boiler_values.boiler_ch_enabled else 'OFF')
+                await mqc.publish("homeassistant/water_heater/boilerCH/setpoint_state", str(round(boiler_values.boiler_flow_temperature_setpoint, 2)))
                 await mqc.publish("homeassistant/binary_sensor/boilerChActive/state", 'ON' if boiler_values.boiler_ch_active else 'OFF')
 
-                await mqc.publish("homeassistant/boiler/boilerDHW/current_temperature_state", str(round(boiler_values.boiler_flow_temperature, 2)))
-                await mqc.publish("homeassistant/boiler/boilerDHW/mode_state", 'ON' if boiler_values.boiler_dhw_enabled else 'OFF')
-                await mqc.publish("homeassistant/boiler/boilerDHW/setpoint_state", str(round(boiler_values.boiler_dhw_temperature_setpoint, 2)))
+                await mqc.publish("homeassistant/water_heater/boilerDHW/current_temperature_state", str(round(boiler_values.boiler_flow_temperature, 2)))
+                await mqc.publish("homeassistant/water_heater/boilerDHW/mode_state", 'ON' if boiler_values.boiler_dhw_enabled else 'OFF')
+                await mqc.publish("homeassistant/water_heater/boilerDHW/setpoint_state", str(round(boiler_values.boiler_dhw_temperature_setpoint, 2)))
                 await mqc.publish("homeassistant/binary_sensor/boilerDHWActive/state", 'ON' if boiler_values.boiler_dhw_active else 'OFF')
 
                 await asyncio.sleep_ms(MQTT_PUBLISH_MS)
