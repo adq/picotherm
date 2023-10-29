@@ -26,7 +26,7 @@ class BoilerValues():
     boiler_fault_high_water_temperature: bool = False
 
     # writable things
-    boiler_ch_enabled: bool = True
+    boiler_ch_enabled: bool = False
     boiler_dhw_enabled: bool = True
 
     boiler_flow_temperature_setpoint: float = 70.0
