@@ -196,6 +196,15 @@ async def control_ch_setpoint(setpoint: float):
     assert r_data_id == DATA_ID_TSET
 
 
+async def read_ch_setpoint() -> float:
+    r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
+        MSG_TYPE_READ_DATA, DATA_ID_TSET, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TSET
+    return f88(r_data)
+
+
 async def control_ch2_setpoint(setpoint: float):
     assert setpoint >= 0 and setpoint <= 100
 
@@ -245,6 +254,15 @@ async def control_room_setpoint(setpoint: float):
     assert r_data_id == DATA_ID_TRSET
 
 
+async def read_room_setpoint() -> float:
+    r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
+        MSG_TYPE_READ_DATA, DATA_ID_TRSET, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TRSET
+    return f88(r_data)
+
+
 async def control_room_setpoint_ch2(setpoint: float):
     assert setpoint >= -40 and setpoint <= 127
 
@@ -263,6 +281,15 @@ async def control_room_temperature(setpoint: float):
     )
     assert r_msg_type == MSG_TYPE_WRITE_ACK
     assert r_data_id == DATA_ID_TR
+
+
+async def read_room_temperature() -> float:
+    r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
+        MSG_TYPE_READ_DATA, DATA_ID_TR, 0
+    )
+    assert r_msg_type == MSG_TYPE_READ_ACK
+    assert r_data_id == DATA_ID_TR
+    return f88(r_data)
 
 
 async def control_cooling(signal: float):
@@ -609,7 +636,16 @@ async def read_capacity_and_min_modulation():
 
 async def control_max_relative_modulation_level(l: float):
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
-        MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, int(l * 256)
+        MSG_TYPE_WRITE_DATA, DATA_ID_MAX_REL_MODULATION, int(l * 256)
+    )
+    assert r_msg_type == MSG_TYPE_WRITE_ACK
+    assert r_data_id == DATA_ID_MAX_REL_MODULATION
+
+
+async def read_max_relative_modulation_level() -> float:
+    r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
+        MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, 0
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_MAX_REL_MODULATION
+    return f88(r_data)
