@@ -31,40 +31,26 @@ class BoilerValues():
     boiler_flow_temperature_setpoint: float = 70.0
     boiler_flow_temperature_setpoint_rangemin: float = 0.0
     boiler_flow_temperature_setpoint_rangemax: float = 100.0
-    boiler_flow_temperature_setpoint_changed: bool = False
 
     boiler_flow_temperature_max_setpoint: float = 80.0
     boiler_flow_temperature_max_setpoint_rangemin: float = 0.0
     boiler_flow_temperature_max_setpoint_rangemax: float = 100.0
-    boiler_flow_temperature_max_setpoint_changed: bool = False
 
     boiler_dhw_temperature_setpoint: float = 65.0
     boiler_dhw_temperature_setpoint_rangemin: float = 0.0
     boiler_dhw_temperature_setpoint_rangemax: float = 100.0
-    boiler_dhw_temperature_setpoint_changed: bool = False
 
     boiler_room_temperature_setpoint: float = 0.0
     boiler_room_temperature_setpoint_rangemin: float = -40.0
     boiler_room_temperature_setpoint_rangemax: float = 127.0
-    boiler_room_temperature_setpoint_changed: bool = False
 
     boiler_room_temperature: float = 0.0
     boiler_room_temperature_rangemin: float = -40.0
     boiler_room_temperature_rangemax: float = 127.0
-    boiler_room_temperature_changed: bool = False
 
     boiler_max_modulation: float = 100.0
     boiler_max_modulation_rangemin: float = 0.0
     boiler_max_modulation_rangemax: float = 100.0
-    boiler_max_modulation_changed: bool = False
-
-    def mark_all_changed(self):
-        self.boiler_flow_temperature_setpoint_changed = True
-        self.boiler_flow_temperature_setpoint_max_changed = True
-        self.boiler_dhw_temperature_setpoint_changed = True
-        self.boiler_room_temperature_setpoint_changed = True
-        self.boiler_room_temperature_changed = True
-        self.boiler_max_modulation_changed = True
 
 boiler_values = BoilerValues()
 
@@ -261,7 +247,6 @@ async def boiler():
 
     while True:
         try:
-            boiler_values.mark_all_changed()
             last_get_detail_timestamp: int = 0
             last_write_settings_timestamp: int = 0
 
@@ -319,24 +304,18 @@ async def boiler():
 
                 # write any changed things to the boiler
                 if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
-                    if boiler_values.boiler_flow_temperature_setpoint_changed:
+                    if await opentherm_app.read_ch_setpoint() != boiler_values.boiler_flow_temperature_setpoint:
                         await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
-                        boiler_values.boiler_flow_temperature_setpoint_changed = False
-                    if boiler_values.boiler_flow_temperature_max_setpoint_changed:
+                    if await opentherm_app.read_maxch_setpoint() != boiler_values.boiler_flow_temperature_max_setpoint:
                         await opentherm_app.control_maxch_setpoint(boiler_values.boiler_flow_temperature_max_setpoint)
-                        boiler_values.boiler_flow_temperature_max_setpoint_changed = False
-                    if boiler_values.boiler_dhw_temperature_setpoint_changed:
+                    if await opentherm_app.read_dhw_setpoint() != boiler_values.boiler_dhw_temperature_setpoint:
                         await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
-                        boiler_values.boiler_dhw_temperature_setpoint_changed = False
-                    if boiler_values.boiler_room_temperature_setpoint_changed:
+                    if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
                         await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
-                        boiler_values.boiler_room_temperature_setpoint_changed = False
-                    if boiler_values.boiler_room_temperature_changed:
+                    if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
                         await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
-                        boiler_values.boiler_room_temperature_changed = False
-                    if boiler_values.boiler_max_modulation_changed:
+                    if await opentherm_app.read_max_relative_modulation_level() != boiler_values.boiler_max_modulation:
                         await opentherm_app.control_max_relative_modulation_level(boiler_values.boiler_max_modulation)
-                        boiler_values.boiler_max_modulation_changed = False
                     last_write_settings_timestamp = time.ticks_ms()
 
                 # sleep and then do it all again
@@ -364,10 +343,7 @@ def msg_callback(topic, msg, retained, qos, dup):
             v = float(msg)
             if v < boiler_values.boiler_flow_temperature_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_setpoint_rangemax:
                 raise ValueError("out of range")
-
-            if v != boiler_values.boiler_flow_temperature_setpoint:
-                boiler_values.boiler_flow_temperature_setpoint = v
-                boiler_values.boiler_flow_temperature_setpoint_changed = True
+            boiler_values.boiler_flow_temperature_setpoint = v
         except ValueError:
             pass
 
@@ -382,10 +358,7 @@ def msg_callback(topic, msg, retained, qos, dup):
             v = float(msg)
             if v < boiler_values.boiler_dhw_temperature_setpoint_rangemin or v > boiler_values.boiler_dhw_temperature_setpoint_rangemax:
                 raise ValueError("out of range")
-
-            if v != boiler_values.boiler_dhw_temperature_setpoint:
-                boiler_values.boiler_dhw_temperature_setpoint = v
-                boiler_values.boiler_dhw_temperature_setpoint_changed = True
+            boiler_values.boiler_dhw_temperature_setpoint = v
         except ValueError:
             pass
 
@@ -394,10 +367,7 @@ def msg_callback(topic, msg, retained, qos, dup):
             v = float(msg)
             if v < boiler_values.boiler_flow_temperature_max_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_max_setpoint_rangemax:
                 raise ValueError("out of range")
-
-            if v != boiler_values.boiler_flow_temperature_max_setpoint:
-                boiler_values.boiler_flow_temperature_max_setpoint = v
-                boiler_values.boiler_flow_temperature_max_setpoint_changed = True
+            boiler_values.boiler_flow_temperature_max_setpoint = v
         except ValueError:
             pass
 
@@ -406,10 +376,7 @@ def msg_callback(topic, msg, retained, qos, dup):
             v = float(msg)
             if v < boiler_values.boiler_room_temperature_setpoint_rangemin or v > boiler_values.boiler_room_temperature_setpoint_rangemax:
                 raise ValueError("out of range")
-
-            if v != boiler_values.boiler_room_temperature_setpoint:
-                boiler_values.boiler_room_temperature_setpoint = v
-                boiler_values.boiler_room_temperature_setpoint_changed = True
+            boiler_values.boiler_room_temperature_setpoint = v
         except ValueError:
             pass
 
@@ -418,10 +385,7 @@ def msg_callback(topic, msg, retained, qos, dup):
             v = float(msg)
             if v < boiler_values.boiler_room_temperature_rangemin or v > boiler_values.boiler_room_temperature_rangemax:
                 raise ValueError("out of range")
-
-            if v != boiler_values.boiler_room_temperature:
-                boiler_values.boiler_room_temperature = v
-                boiler_values.boiler_room_temperature_changed = True
+            boiler_values.boiler_room_temperature = v
         except ValueError:
             pass
 
@@ -430,10 +394,7 @@ def msg_callback(topic, msg, retained, qos, dup):
             v = float(msg)
             if v < boiler_values.boiler_max_modulation_rangemin or v > boiler_values.boiler_max_modulation_rangemax:
                 raise ValueError("out of range")
-
-            if v != boiler_values.boiler_max_modulation:
-                boiler_values.boiler_max_modulation = v
-                boiler_values.boiler_max_modulation_changed = True
+            boiler_values.boiler_max_modulation = v
         except ValueError:
             pass
 
