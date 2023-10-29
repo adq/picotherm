@@ -241,6 +241,50 @@ BOILER_MAX_MODULATION_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/nu
                                                 })
 
 
+async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timestamp: int) -> tuple[int, int]:
+    # normal status exchange, happens every second ish
+    boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
+                                                        dhw_enabled=boiler_values.boiler_dhw_enabled)
+    boiler_values.boiler_flame_active = boiler_status['flame_active']
+    boiler_values.boiler_ch_active = boiler_status['ch_active']
+    boiler_values.boiler_dhw_active = boiler_status['dhw_active']
+    boiler_values.boiler_fault_active = boiler_status['fault']
+
+    # retrieve detailed stats
+    if (time.ticks_ms() - last_get_detail_timestamp) > GET_DETAILED_STATS_MS:
+        boiler_values.boiler_flow_temperature = await opentherm_app.read_boiler_flow_temperature()
+        boiler_values.boiler_return_temperature = await opentherm_app.read_boiler_return_water_temperature()
+        boiler_values.boiler_exhaust_temperature = await opentherm_app.read_exhaust_temperature()
+        boiler_values.boiler_fan_speed = await opentherm_app.read_fan_speed()
+        boiler_values.boiler_modulation_level = await opentherm_app.read_relative_modulation_level()
+        boiler_values.boiler_ch_pressure = await opentherm_app.read_ch_water_pressure()
+        boiler_values.boiler_dhw_flow_rate = await opentherm_app.read_dhw_flow_rate()
+
+        fault_flags = await opentherm_app.read_fault_flags()
+        boiler_values.boiler_fault_low_water_pressure = fault_flags['low_water_pressure']
+        boiler_values.boiler_fault_flame = fault_flags['flame_fault']
+        boiler_values.boiler_fault_low_air_pressure = fault_flags['air_pressure_fault']
+        boiler_values.boiler_fault_high_water_temperature = fault_flags['water_over_temp']
+        last_get_detail_timestamp = time.ticks_ms()
+
+    # write any changed things to the boiler
+    if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
+        if await opentherm_app.read_ch_setpoint() != boiler_values.boiler_flow_temperature_setpoint:
+            await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
+        if await opentherm_app.read_maxch_setpoint() != boiler_values.boiler_flow_temperature_max_setpoint:
+            await opentherm_app.control_maxch_setpoint(boiler_values.boiler_flow_temperature_max_setpoint)
+        if await opentherm_app.read_dhw_setpoint() != boiler_values.boiler_dhw_temperature_setpoint:
+            await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
+        # if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
+        #     await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
+        # if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
+        #     await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
+        if await opentherm_app.read_max_relative_modulation_level() != boiler_values.boiler_max_modulation:
+            await opentherm_app.control_max_relative_modulation_level(boiler_values.boiler_max_modulation)
+        last_write_settings_timestamp = time.ticks_ms()
+
+    return last_get_detail_timestamp, last_write_settings_timestamp
+
 
 async def boiler():
     global boiler_values
@@ -278,46 +322,11 @@ async def boiler():
                 pass
 
             while True:
-                # normal status exchange, happens every second ish
-                boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
-                                                                    dhw_enabled=boiler_values.boiler_dhw_enabled)
-                boiler_values.boiler_flame_active = boiler_status['flame_active']
-                boiler_values.boiler_ch_active = boiler_status['ch_active']
-                boiler_values.boiler_dhw_active = boiler_status['dhw_active']
-                boiler_values.boiler_fault_active = boiler_status['fault']
-
-                # retrieve detailed stats
-                if (time.ticks_ms() - last_get_detail_timestamp) > GET_DETAILED_STATS_MS:
-                    boiler_values.boiler_flow_temperature = await opentherm_app.read_boiler_flow_temperature()
-                    boiler_values.boiler_return_temperature = await opentherm_app.read_boiler_return_water_temperature()
-                    boiler_values.boiler_exhaust_temperature = await opentherm_app.read_exhaust_temperature()
-                    boiler_values.boiler_fan_speed = await opentherm_app.read_fan_speed()
-                    boiler_values.boiler_modulation_level = await opentherm_app.read_relative_modulation_level()
-                    boiler_values.boiler_ch_pressure = await opentherm_app.read_ch_water_pressure()
-                    boiler_values.boiler_dhw_flow_rate = await opentherm_app.read_dhw_flow_rate()
-
-                    fault_flags = await opentherm_app.read_fault_flags()
-                    boiler_values.boiler_fault_low_water_pressure = fault_flags['low_water_pressure']
-                    boiler_values.boiler_fault_flame = fault_flags['flame_fault']
-                    boiler_values.boiler_fault_low_air_pressure = fault_flags['air_pressure_fault']
-                    boiler_values.boiler_fault_high_water_temperature = fault_flags['water_over_temp']
-                    last_get_detail_timestamp = time.ticks_ms()
-
-                # write any changed things to the boiler
-                if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
-                    if await opentherm_app.read_ch_setpoint() != boiler_values.boiler_flow_temperature_setpoint:
-                        await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
-                    if await opentherm_app.read_maxch_setpoint() != boiler_values.boiler_flow_temperature_max_setpoint:
-                        await opentherm_app.control_maxch_setpoint(boiler_values.boiler_flow_temperature_max_setpoint)
-                    if await opentherm_app.read_dhw_setpoint() != boiler_values.boiler_dhw_temperature_setpoint:
-                        await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
-                    # if await opentherm_app.read_room_setpoint() != boiler_values.boiler_room_temperature_setpoint:
-                    #     await opentherm_app.control_room_setpoint(boiler_values.boiler_room_temperature_setpoint)
-                    # if await opentherm_app.read_room_temperature() != boiler_values.boiler_room_temperature:
-                    #     await opentherm_app.control_room_temperature(boiler_values.boiler_room_temperature)
-                    if await opentherm_app.read_max_relative_modulation_level() != boiler_values.boiler_max_modulation:
-                        await opentherm_app.control_max_relative_modulation_level(boiler_values.boiler_max_modulation)
-                    last_write_settings_timestamp = time.ticks_ms()
+                # errors happen all the damn time, so we just ignore them as per the protocol
+                try:
+                    last_get_detail_timestamp, last_write_settings_timestamp = await boiler_loop(last_get_detail_timestamp, last_write_settings_timestamp)
+                except Exception as ex:
+                    sys.print_exception(ex)
 
                 # sleep and then do it all again
                 await asyncio.sleep_ms(STATUS_LOOP_DELAY_MS)
