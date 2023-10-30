@@ -239,8 +239,10 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
     # write any changed things to the boiler
     if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
         if int(await opentherm_app.read_ch_setpoint()) != boiler_values.boiler_flow_temperature_setpoint:
+            print("wrote ch setpoint")
             await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
         if int(await opentherm_app.read_dhw_setpoint()) != boiler_values.boiler_dhw_temperature_setpoint:
+            print("wrote dhw setpoint")
             await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
         last_write_settings_timestamp = time.ticks_ms()
 
