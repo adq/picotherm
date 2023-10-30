@@ -301,7 +301,7 @@ def msg_callback(topic, msg, retained, qos, dup):
         try:
             v = int(float(msg))
             if v < boiler_values.boiler_flow_temperature_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_setpoint_rangemax:
-                raise ValueError("out of range")
+                v = boiler_values.boiler_flow_temperature_setpoint_rangemax
             boiler_values.boiler_flow_temperature_setpoint = v
         except ValueError:
             pass
@@ -316,7 +316,7 @@ def msg_callback(topic, msg, retained, qos, dup):
         try:
             v = int(float(msg))
             if v < boiler_values.boiler_dhw_temperature_setpoint_rangemin or v > boiler_values.boiler_dhw_temperature_setpoint_rangemax:
-                raise ValueError("out of range")
+                v = boiler_values.boiler_dhw_temperature_setpoint_rangemax
             boiler_values.boiler_dhw_temperature_setpoint = v
         except ValueError:
             pass
