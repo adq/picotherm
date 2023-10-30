@@ -34,7 +34,7 @@ class BoilerValues():
     boiler_flow_temperature_setpoint_rangemin: float = 0.0
     boiler_flow_temperature_setpoint_rangemax: float = 100.0
 
-    boiler_dhw_temperature_setpoint: float = 65.0
+    boiler_dhw_temperature_setpoint: float = 60.0
     boiler_dhw_temperature_setpoint_rangemin: float = 0.0
     boiler_dhw_temperature_setpoint_rangemax: float = 100.0
 
@@ -242,7 +242,7 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
             print("wrote ch setpoint")
             await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
         if int(await opentherm_app.read_dhw_setpoint()) != boiler_values.boiler_dhw_temperature_setpoint:
-            print("wrote dhw setpoint")
+            print("wrote dhw setpoint", int(await opentherm_app.read_dhw_setpoint()), boiler_values.boiler_dhw_temperature_setpoint)
             await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
         last_write_settings_timestamp = time.ticks_ms()
 
