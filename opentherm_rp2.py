@@ -74,7 +74,7 @@ def opentherm_rx():
 sm_opentherm_rx = rp2.StateMachine(4, opentherm_rx, freq=60000, in_base=machine.Pin(1), jmp_pin=machine.Pin(1)) # each tick is 17uS
 
 
-async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=True) -> tuple[int, int, int]:
+async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=False) -> tuple[int, int, int]:
     f = frame_encode(msg_type, data_id, data_value)
     m = manchester_encode(f, invert=True)
     if debug:
