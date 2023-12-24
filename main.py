@@ -30,7 +30,7 @@ class BoilerValues():
     boiler_ch_enabled: bool = False
     boiler_dhw_enabled: bool = True
 
-    boiler_flow_temperature_setpoint: float = 70.0
+    boiler_flow_temperature_setpoint: float = 65.0
     boiler_flow_temperature_setpoint_rangemin: float = 0.0
     boiler_flow_temperature_setpoint_rangemax: float = 100.0
 
