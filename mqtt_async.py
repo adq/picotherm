@@ -14,6 +14,7 @@
 import socket
 import struct
 import sys
+import machine
 from binascii import hexlify
 from errno import EINPROGRESS
 
@@ -522,6 +523,7 @@ class MQTTClient:
         self._unacked_pids = {}  # PUBACK and SUBACK pids awaiting ACK response
         self._state = 0  # 0=init, 1=has-connected, 2=disconnected=dead
         self._conn_keeper = None  # handle to persistent keep-connection coro
+        self._reconnect_tries = 0
         self._prev_pub = None  # MQTTMessage of as yet unacked async pub
         self._prev_pub_proto = None  # self._proto used for as yet unacked async pub
         # misc
@@ -763,6 +765,7 @@ class MQTTClient:
             if self._proto is not None:
                 # We're connected, pause for 1 second
                 await asyncio.sleep(_CONN_DELAY)
+                self._reconnect_tries = 0
                 continue
             # we have a problem, need some form of reconnection
             if self._c["interface"].isconnected():
@@ -785,6 +788,10 @@ class MQTTClient:
             try:
                 await self.wifi_connect()
             except OSError as e:
+                self._reconnect_tries += 1
+                if self._reconnect_tries > 20:
+                    log.warning("too many failed WiFi reconnects - resetting")
+                    machine.reset()
                 log.warning("error in Wifi reconnect: {}.".format(e))
                 await asyncio.sleep(_CONN_DELAY)
         # log.debug('Disconnected, exited _keep_connected')
