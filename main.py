@@ -5,6 +5,8 @@ import mqtt_async
 import cfgsecrets
 import json
 import sys
+import rp2
+
 
 class BoilerValues():
     # readable things
@@ -337,6 +339,7 @@ async def conn_callback(client):
 async def mqtt():
     global boiler_values
 
+    rp2.country('GB')
     mqtt_async.config['ssid'] = cfgsecrets.WIFI_SSID
     mqtt_async.config['wifi_pw'] = cfgsecrets.WIFI_PASSWORD
     mqtt_async.config['server'] = cfgsecrets.MQTT_HOST
