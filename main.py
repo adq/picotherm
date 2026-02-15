@@ -1,11 +1,15 @@
 import opentherm_app
 import time
+import network
 import asyncio
 import cfgsecrets
 import json
+import utime
 import sys
+import rp2
 from lib import send_syslog
 from umqtt.robust import MQTTClient
+
 
 
 class BoilerValues():
@@ -459,4 +463,24 @@ async def main():
     ]
     await asyncio.gather(*what)
 
+
+time.sleep(5)
+
+def do_connect():
+    rp2.country('GB')
+
+    sta_if = network.WLAN(network.STA_IF)
+    if not sta_if.isconnected():
+        print('connecting to network...')
+        sta_if.active(True)
+        sta_if.connect(cfgsecrets.WIFI_SSID, cfgsecrets.WIFI_PASSWORD)
+        while not sta_if.isconnected():
+            print("Attempting to connect....")
+            utime.sleep(1)
+    print('Connected! Network config:', sta_if.ifconfig())
+
+print("Connecting to your wifi...")
+do_connect()
+
+time.sleep(5)
 asyncio.run(main())
