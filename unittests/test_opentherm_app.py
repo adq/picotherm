@@ -72,6 +72,24 @@ class TestOpenThermApp_control_ch_setpoint(unittest.TestCase):
             await control_ch_setpoint(101)
 
 
+class TestOpenThermApp_read_ch_setpoint(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_ch_setpoint(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_TSET, 0x1900)
+        result = await read_ch_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TSET, 0)
+        self.assertEqual(result, 25.0)
+
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_ch_setpoint_zero(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_TSET, 0x0000)
+        result = await read_ch_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TSET, 0)
+        self.assertEqual(result, 0.0)
+
+
 class TestOpenThermApp_read_dhw_setpoint_range(unittest.TestCase):
     @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
     @async_test
@@ -439,6 +457,24 @@ class TestOpenThermApp_control_room_setpoint(unittest.TestCase):
             await control_room_setpoint(128)
 
 
+class TestOpenThermApp_read_room_setpoint(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_room_setpoint(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_TRSET, 0x1500)
+        result = await read_room_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TRSET, 0)
+        self.assertEqual(result, 21.0)
+
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_room_setpoint_zero(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_TRSET, 0x0000)
+        result = await read_room_setpoint()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TRSET, 0)
+        self.assertEqual(result, 0.0)
+
+
 class TestOpenThermApp_control_room_setpoint_ch2(unittest.TestCase):
     @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
     @async_test
@@ -469,6 +505,24 @@ class TestOpenThermApp_control_room_temperature(unittest.TestCase):
             await control_room_temperature(-41)
         with self.assertRaises(AssertionError):
             await control_room_temperature(128)
+
+
+class TestOpenThermApp_read_room_temperature(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_room_temperature(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_TR, 0x1680)
+        result = await read_room_temperature()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TR, 0)
+        self.assertEqual(result, 22.5)
+
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_room_temperature_negative(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_TR, 0xFD00)
+        result = await read_room_temperature()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_TR, 0)
+        self.assertEqual(result, -3.0)
 
 
 class TestOpenThermApp_read_relative_modulation_level(unittest.TestCase):
@@ -1240,3 +1294,21 @@ class TestOpenThermApp_control_max_relative_modulation_level(unittest.TestCase):
         mock_opentherm_exchange.return_value = (MSG_TYPE_WRITE_ACK, DATA_ID_MAX_REL_MODULATION, 0x7F00)
         await control_max_relative_modulation_level(50)
         mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_WRITE_DATA, DATA_ID_MAX_REL_MODULATION, 50 * 256)
+
+
+class TestOpenThermApp_read_max_relative_modulation_level(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_max_relative_modulation_level(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_MAX_REL_MODULATION, 0x5000)
+        result = await read_max_relative_modulation_level()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, 0)
+        self.assertEqual(result, 80.0)
+
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_max_relative_modulation_level_zero(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_MAX_REL_MODULATION, 0x0000)
+        result = await read_max_relative_modulation_level()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_MAX_REL_MODULATION, 0)
+        self.assertEqual(result, 0.0)
