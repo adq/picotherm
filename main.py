@@ -439,7 +439,7 @@ async def mqtt():
                 mqc.check_msg()
 
         except Exception as ex:
-            if mqc:
+            if mqc and mqc.sock:
                 try:
                     mqc.sock.close()
                 except:
