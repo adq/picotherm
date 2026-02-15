@@ -117,14 +117,12 @@ def send_syslog(message, port=514, hostname="picopower", appname="main", procid=
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     pri = 13  # user.notice
     version = 1
-    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
-    # RFC5424 requires colon in timezone offset (+00:00 not +0000)
-    if timestamp[-5:].startswith(('+', '-')):
-        # Insert colon: +0000 -> +00:00
-        timestamp = timestamp[:-2] + ':' + timestamp[-2:]
-    elif not timestamp.endswith('Z'):
-        # If no timezone info, add 'Z' for UTC
-        timestamp += 'Z'
+    # MicroPython uses time.localtime() instead of strftime
+    t = time.localtime()
+    # Format: YYYY-MM-DDTHH:MM:SS+00:00
+    timestamp = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
+        t[0], t[1], t[2], t[3], t[4], t[5]
+    )
     syslog_msg = f"<{pri}>{version} {timestamp} {hostname} {appname} {procid} {msgid} - {message}".encode('utf-8')
     try:
         sock.sendto(syslog_msg, syslog_addr)
