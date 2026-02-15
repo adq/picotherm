@@ -86,17 +86,16 @@ BOILER_CH_PRESSURE_HASS_CONFIG = json.dumps({"device_class": "pressure",
                                              "name": "CH Pressure",
                                              })
 
-BOILER_DHW_FLOW_RATE_HASS_CONFIG = json.dumps({"device_class": "pressure",
-                                               "state_topic": "homeassistant/sensor/boilerDhwFlowRate/state",
+BOILER_DHW_FLOW_RATE_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/sensor/boilerDhwFlowRate/state",
                                                "unit_of_measurement": "l/min",
                                                "unique_id": "boilerDhwFlowRate",
                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
                                                "name": "HW Flow Rate",
                                                })
 
-BOILER_MAX_CAPACITY_HASS_CONFIG = json.dumps({ "device_class": "energy",
+BOILER_MAX_CAPACITY_HASS_CONFIG = json.dumps({ "device_class": "power",
                                                "state_topic": "homeassistant/sensor/boilerMaxCapacity/state",
-                                               "unit_of_measurement": "kWh",
+                                               "unit_of_measurement": "kW",
                                                "unique_id": "boilerMaxCapacity",
                                                "device": {"identifiers": ["boiler"], "name": "Boiler"},
                                                "name": "Max Capacity",
@@ -153,7 +152,7 @@ BOILER_CH_ENABLED_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/switch
 
 BOILER_CH_FLOW_TEMPERATURE_HASS_CONFIG = json.dumps({"device_class": "temperature",
                                                      "state_topic": "homeassistant/sensor/boilerCHFlowTemperature/state",
-                                                     "unit_of_measurement": "C",
+                                                     "unit_of_measurement": "°C",
                                                      "unique_id": "boilerCHFlowTemperature",
                                                      "device": {"identifiers": ["boiler"], "name": "Boiler"},
                                                      "name": "Heating Boiler Temperature",
@@ -164,7 +163,7 @@ BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps({"state_topic": "ho
                                                               "device_class": "temperature",
                                                               "min": boiler_values.boiler_flow_temperature_setpoint_rangemin,
                                                               "max": boiler_values.boiler_flow_temperature_setpoint_rangemax,
-                                                              "unit_of_measurement": "C",
+                                                              "unit_of_measurement": "°C",
                                                               "unique_id": "boilerCHFlowTemperatureSetpoint",
                                                               "device": {"identifiers": ["boiler"], "name": "boiler"},
                                                               "name": "Heating Boiler Setpoint",
@@ -186,7 +185,7 @@ BOILER_DHW_ENABLED_HASS_CONFIG = json.dumps({"state_topic": "homeassistant/switc
 
 BOILER_DHW_FLOW_TEMPERATURE_HASS_CONFIG = json.dumps({"device_class": "temperature",
                                                      "state_topic": "homeassistant/sensor/boilerDHWFlowTemperature/state",
-                                                     "unit_of_measurement": "C",
+                                                     "unit_of_measurement": "°C",
                                                      "unique_id": "boilerDHWFlowTemperature",
                                                      "device": {"identifiers": ["boiler"], "name": "Boiler"},
                                                      "name": "Hot Water Temperature",
@@ -197,7 +196,7 @@ BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps({"state_topic": "h
                                                               "device_class": "temperature",
                                                               "min": boiler_values.boiler_dhw_temperature_setpoint_rangemin,
                                                               "max": boiler_values.boiler_dhw_temperature_setpoint_rangemax,
-                                                              "unit_of_measurement": "C",
+                                                              "unit_of_measurement": "°C",
                                                               "unique_id": "boilerDHWFlowTemperatureSetpoint",
                                                               "device": {"identifiers": ["boiler"], "name": "boiler"},
                                                               "name": "Hot Water Setpoint",
@@ -230,7 +229,15 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
         boiler_values.boiler_flow_temperature = await opentherm_app.read_boiler_flow_temperature()
         boiler_values.boiler_return_temperature = await opentherm_app.read_boiler_return_water_temperature()
         boiler_values.boiler_exhaust_temperature = await opentherm_app.read_exhaust_temperature()
-        boiler_values.boiler_fan_speed = await opentherm_app.read_fan_speed()
+
+        # Fan speed uses non-standard Data ID 35 (not in OT v2.2 spec)
+        # Isolate it so UNKNOWN-DATAID doesn't crash the entire detail poll
+        try:
+            boiler_values.boiler_fan_speed = await opentherm_app.read_fan_speed()
+        except (opentherm_app.UnknownDataIdError, opentherm_app.DataInvalidError) as ex:
+            # Boiler doesn't support fan speed reading - leave at last known value
+            send_syslog(f"Fan speed read skipped: {str(ex)}")
+
         boiler_values.boiler_modulation_level = await opentherm_app.read_relative_modulation_level()
         boiler_values.boiler_ch_pressure = await opentherm_app.read_ch_water_pressure()
         boiler_values.boiler_dhw_flow_rate = await opentherm_app.read_dhw_flow_rate()

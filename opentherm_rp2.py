@@ -75,8 +75,16 @@ sm_opentherm_rx = rp2.StateMachine(4, opentherm_rx, freq=60000, in_base=machine.
 
 
 async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=False) -> tuple[int, int, int]:
+    """Perform an OpenTherm request-response exchange via PIO state machines.
+
+    Hardware interface notes:
+    - TX uses inverted Manchester encoding because the PIO output is hardware-inverted
+      (see opentherm_tx PIO definition line 10: "hardware is inverted for transmission")
+    - RX does NOT invert because it reads the raw pin state directly
+    - This asymmetry is intentional and matches the OpenTherm electrical interface
+    """
     f = frame_encode(msg_type, data_id, data_value)
-    m = manchester_encode(f, invert=True)
+    m = manchester_encode(f, invert=True)  # Invert for TX hardware
     if debug:
         print(f"> {f:08x} {(m >> 48) & 0xffff:016b} {(m >> 32) & 0xffff:016b} {(m >> 16) & 0xffff:016b} {m & 0xffff:016b}")
 
@@ -111,13 +119,13 @@ async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeo
     if sm_opentherm_rx.rx_fifo() < 2:
         raise Exception("Timeout waiting for response")
 
-    # decode it
+    # decode it (no inversion needed - RX reads raw pin state)
     a = sm_opentherm_rx.get()
     b = sm_opentherm_rx.get()
     m2 = (a << 32) | b
     f2 = 0
     try:
-        f2 = manchester_decode(m2)
+        f2 = manchester_decode(m2)  # No inversion for RX
     finally:
         if debug:
             print(f"< {f2:08x} {(m2 >> 48) & 0xffff:016b} {(m2 >> 32) & 0xffff:016b} {(m2 >> 16) & 0xffff:016b} {m2 & 0xffff:016b}")
