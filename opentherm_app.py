@@ -462,7 +462,7 @@ async def read_fan_speed() -> float:
     )
     assert r_msg_type == MSG_TYPE_READ_ACK
     assert r_data_id == DATA_ID_BOILER_FAN_SPEED
-    return s16(r_data)  # ??
+    return (r_data & 0xff) * 60
 
 
 async def read_outside_temperature() -> float:
