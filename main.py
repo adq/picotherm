@@ -215,10 +215,15 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
     # normal status exchange, happens every second ish
     boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
                                                         dhw_enabled=boiler_values.boiler_dhw_enabled)
+    # Check for fault state changes
+    prev_fault = boiler_values.boiler_fault_active
     boiler_values.boiler_flame_active = boiler_status['flame_active']
     boiler_values.boiler_ch_active = boiler_status['ch_active']
     boiler_values.boiler_dhw_active = boiler_status['dhw_active']
     boiler_values.boiler_fault_active = boiler_status['fault']
+
+    if boiler_values.boiler_fault_active and not prev_fault:
+        send_syslog("FAULT DETECTED: boiler fault active")
 
     # retrieve detailed stats
     if (time.ticks_ms() - last_get_detail_timestamp) > GET_DETAILED_STATS_MS:
@@ -232,6 +237,17 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
         boiler_values.boiler_dhw_temperature = await opentherm_app.read_dhw_temperature()
 
         fault_flags = await opentherm_app.read_fault_flags()
+
+        # Log specific fault changes
+        if fault_flags['low_water_pressure'] and not boiler_values.boiler_fault_low_water_pressure:
+            send_syslog("FAULT: Low water pressure detected")
+        if fault_flags['flame_fault'] and not boiler_values.boiler_fault_flame:
+            send_syslog("FAULT: Flame fault detected")
+        if fault_flags['air_pressure_fault'] and not boiler_values.boiler_fault_low_air_pressure:
+            send_syslog("FAULT: Low air pressure detected")
+        if fault_flags['water_over_temp'] and not boiler_values.boiler_fault_high_water_temperature:
+            send_syslog("FAULT: High water temperature detected")
+
         boiler_values.boiler_fault_low_water_pressure = fault_flags['low_water_pressure']
         boiler_values.boiler_fault_flame = fault_flags['flame_fault']
         boiler_values.boiler_fault_low_air_pressure = fault_flags['air_pressure_fault']
@@ -269,16 +285,16 @@ async def boiler():
             # I assume these are static, so we can just read them once
             try:
                 boiler_values.boiler_max_capacity, _ = await opentherm_app.read_capacity_and_min_modulation()
-            except:
-                pass
+            except Exception as ex:
+                send_syslog(f"Failed to read boiler capacity: {str(ex)}")
             try:
                 boiler_values.boiler_dhw_temperature_setpoint_rangemin, boiler_values.boiler_dhw_temperature_setpoint_rangemax = await opentherm_app.read_dhw_setpoint_range()
                 tmp = json.loads(BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
                 tmp['min'] = boiler_values.boiler_dhw_temperature_setpoint_rangemin
                 tmp['max'] = boiler_values.boiler_dhw_temperature_setpoint_rangemax
                 BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
-            except:
-                pass
+            except Exception as ex:
+                send_syslog(f"Failed to read DHW setpoint range: {str(ex)}")
 
             while True:
                 # errors happen all the damn time, so we just ignore them as per the protocol
@@ -302,8 +318,10 @@ def mqtt_callback(topic, msg):
 
     if topic == b'homeassistant/switch/boilerCHEnabled/command':
         if msg == b'ON':
+            send_syslog("MQTT CMD: CH enabled ON")
             boiler_values.boiler_ch_enabled = True
         elif msg == b'OFF':
+            send_syslog("MQTT CMD: CH enabled OFF")
             boiler_values.boiler_ch_enabled = False
 
     elif topic == b'homeassistant/number/boilerCHFlowTemperatureSetpoint/command':
@@ -311,14 +329,17 @@ def mqtt_callback(topic, msg):
             v = int(float(msg))
             if v < boiler_values.boiler_flow_temperature_setpoint_rangemin or v > boiler_values.boiler_flow_temperature_setpoint_rangemax:
                 v = boiler_values.boiler_flow_temperature_setpoint_rangemax
+            send_syslog(f"MQTT CMD: CH setpoint -> {v}")
             boiler_values.boiler_flow_temperature_setpoint = v
         except ValueError:
-            pass
+            send_syslog(f"MQTT CMD: Invalid CH setpoint: {msg}")
 
     elif topic == b'homeassistant/switch/boilerDHWEnabled/command':
         if msg == b'ON':
+            send_syslog("MQTT CMD: DHW enabled ON")
             boiler_values.boiler_dhw_enabled = True
         elif msg == b'OFF':
+            send_syslog("MQTT CMD: DHW enabled OFF")
             boiler_values.boiler_dhw_enabled = False
 
     elif topic == b'homeassistant/number/boilerDHWFlowTemperatureSetpoint/command':
@@ -326,9 +347,10 @@ def mqtt_callback(topic, msg):
             v = int(float(msg))
             if v < boiler_values.boiler_dhw_temperature_setpoint_rangemin or v > boiler_values.boiler_dhw_temperature_setpoint_rangemax:
                 v = boiler_values.boiler_dhw_temperature_setpoint_rangemax
+            send_syslog(f"MQTT CMD: DHW setpoint -> {v}")
             boiler_values.boiler_dhw_temperature_setpoint = v
         except ValueError:
-            pass
+            send_syslog(f"MQTT CMD: Invalid DHW setpoint: {msg}")
 
 async def mqtt_publish(mqc):
     global boiler_values
@@ -401,7 +423,7 @@ async def mqtt():
 
             last_publish_stamp = time.ticks_ms()
             while True:
-                if last_publish_stamp + MQTT_PUBLISH_MS >= time.ticks_ms():
+                if time.ticks_ms() - last_publish_stamp >= MQTT_PUBLISH_MS:
                     send_syslog('MQTT PING')
                     await mqtt_publish(mqc)
                     last_publish_stamp = time.ticks_ms()
@@ -422,6 +444,7 @@ async def mqtt():
 
 
 async def main():
+    send_syslog("picotherm starting")
     what = [
         boiler(),
         mqtt()
