@@ -52,6 +52,8 @@ DATA_ID_TCOLLECTOR = 30
 DATA_ID_TFLOWCH2 = 31
 DATA_ID_TDHW2 = 32
 DATA_ID_TEXHAUST = 33
+# ID 35 not in OT v2.2 but defined in v4.2 spec section 5.3.3:
+# HB: fan speed setpoint in Hz (RPM/60), LB: actual fan speed in Hz (RPM/60)
 DATA_ID_BOILER_FAN_SPEED = 35
 
 DATA_ID_TDHWSET_BOUNDS = 48
@@ -97,18 +99,23 @@ class UnknownDataIdError(Exception):
 async def opentherm_exchange_retry(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, max_retries: int = 10):
     """Attempt an OpenTherm exchange with retry logic.
 
-    Note: DATA-INVALID and UNKNOWN-DATAID responses are NOT retried as they are
-    valid protocol responses per OpenTherm spec section 4.4.1/4.4.2.
+    OT spec 4.3.1: master must wait 100ms minimum between conversations.
+    The inter-message delay is applied after each exchange completes.
     """
     retry_count = 0
     while True:
         try:
+            result = await opentherm_exchange(msg_type, data_id, data_value, timeout_ms)
+            # OT spec 4.3.1: 100ms minimum gap after conversation ends
             await asyncio.sleep_ms(100)
-            return await opentherm_exchange(msg_type, data_id, data_value, timeout_ms)
+            return result
         except (DataInvalidError, UnknownDataIdError):
-            # These are valid protocol responses per OpenTherm spec - don't retry
+            # Valid protocol responses per OT spec 4.4.1/4.4.2 - do not retry
+            await asyncio.sleep_ms(100)
             raise
         except Exception:
+            # OT spec 4.3.1: 100ms gap even after failed conversation
+            await asyncio.sleep_ms(100)
             if retry_count >= max_retries:
                 raise
             retry_count += 1

@@ -127,6 +127,9 @@ async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeo
     sm_opentherm_tx.get()
     sm_opentherm_tx.active(0)
 
+    # OT spec 4.3.1: slave response must arrive between 20ms and 400ms after request (v4.2; was 800ms in v2.2)
+    await asyncio.sleep_ms(20)
+
     # wait for response
     sm_opentherm_rx.restart()
     sm_opentherm_rx.active(1)

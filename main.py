@@ -44,10 +44,14 @@ class BoilerValues():
     boiler_dhw_temperature_setpoint_rangemin: float = 0.0
     boiler_dhw_temperature_setpoint_rangemax: float = 100.0
 
+    # RBP flags from boiler (None = not yet read, "rw" = read/write, "ro" = read-only)
+    rbp_dhw_setpoint: str = None
+    rbp_maxch_setpoint: str = None
+
 boiler_values = BoilerValues()
 
 
-STATUS_LOOP_DELAY_MS = 900
+STATUS_LOOP_DELAY_MS = 750
 GET_DETAILED_STATS_MS = 10 * 1000
 WRITE_SETTINGS_MS = 10 * 1000
 MQTT_PUBLISH_MS = 10 * 1000
@@ -215,7 +219,7 @@ BOILER_DHW_ACTIVE_HASS_CONFIG = json.dumps({ "device_class": "heat",
 
 
 async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timestamp: int) -> tuple[int, int]:
-    # normal status exchange, happens every second ish
+    # OT spec 5.3.1: status exchange is mandatory every cycle
     boiler_status = await opentherm_app.status_exchange(ch_enabled=boiler_values.boiler_ch_enabled,
                                                         dhw_enabled=boiler_values.boiler_dhw_enabled)
     # Check for fault state changes
@@ -228,14 +232,17 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
     if boiler_values.boiler_fault_active and not prev_fault:
         send_syslog("FAULT DETECTED: boiler fault active")
 
+    # OT spec 5.2: master MUST send ID 1 (TSet) with WRITE_DATA every cycle
+    await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
+
     # retrieve detailed stats
     if (time.ticks_ms() - last_get_detail_timestamp) > GET_DETAILED_STATS_MS:
         boiler_values.boiler_flow_temperature = await opentherm_app.read_boiler_flow_temperature()
         boiler_values.boiler_return_temperature = await opentherm_app.read_boiler_return_water_temperature()
         boiler_values.boiler_exhaust_temperature = await opentherm_app.read_exhaust_temperature()
 
-        # Fan speed uses non-standard Data ID 35 (not in OT v2.2 spec)
-        # Isolate it so UNKNOWN-DATAID doesn't crash the entire detail poll
+        # Fan speed: ID 35 added in OT v4.2 (not in v2.2). Some older boilers may not support it.
+        # Isolate it so UNKNOWN-DATAID doesn't crash the entire detail poll.
         try:
             boiler_values.boiler_fan_speed = await opentherm_app.read_fan_speed()
         except (opentherm_app.UnknownDataIdError, opentherm_app.DataInvalidError) as ex:
@@ -265,19 +272,13 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
         boiler_values.boiler_fault_high_water_temperature = fault_flags['water_over_temp']
         last_get_detail_timestamp = time.ticks_ms()
 
-    # write any changed things to the boiler
+    # write settings periodically
     if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
-        boiler_value = int(await opentherm_app.read_ch_setpoint())
-        if boiler_value != int(boiler_values.boiler_flow_temperature_setpoint):
-            msg = f"wrote ch setpoint {boiler_value} -> {boiler_values.boiler_flow_temperature_setpoint}"
-            send_syslog(msg)
-            await opentherm_app.control_ch_setpoint(int(boiler_values.boiler_flow_temperature_setpoint))
-
-        boiler_value = int(await opentherm_app.read_dhw_setpoint())
-        if boiler_value != int(boiler_values.boiler_dhw_temperature_setpoint):
-            msg = f"wrote dhw setpoint {boiler_value} -> {boiler_values.boiler_dhw_temperature_setpoint}"
-            send_syslog(msg)
-            await opentherm_app.control_dhw_setpoint(int(boiler_values.boiler_dhw_temperature_setpoint))
+        # OT spec 5.3.8.2: max relative modulation level (ID 14)
+        await opentherm_app.control_max_relative_modulation_level(100.0)
+        # DHW setpoint (ID 56 is R/W per spec) - only write if RBP flags allow it
+        if boiler_values.rbp_dhw_setpoint == "rw":
+            await opentherm_app.control_dhw_setpoint(boiler_values.boiler_dhw_temperature_setpoint)
         last_write_settings_timestamp = time.ticks_ms()
 
     return last_get_detail_timestamp, last_write_settings_timestamp
@@ -285,15 +286,37 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
 
 async def boiler():
     global boiler_values
-    global BOILER_CH_FLOW_SETPOINT_MAX_HASS_CONFIG, BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG
+    global BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG, BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG
 
     while True:
         try:
             last_get_detail_timestamp: int = 0
             last_write_settings_timestamp: int = 0
 
-            # try and read the limits we're able to; rely on defaults if they fail.
-            # I assume these are static, so we can just read them once
+            # OT spec 5.3.2: recommended to exchange config before control/status
+            # Write master configuration (ID 2) - MemberID 0 = non-specific
+            try:
+                await opentherm_app.send_primary_configuration(0)
+            except Exception as ex:
+                send_syslog(f"Failed to write master config: {str(ex)}")
+
+            # OT spec 5.2: master MUST read slave configuration (ID 3) at startup
+            try:
+                slave_config = await opentherm_app.read_secondary_configuration()
+                send_syslog(f"Slave config: {slave_config}")
+            except Exception as ex:
+                send_syslog(f"Failed to read slave config: {str(ex)}")
+
+            # Read RBP flags (ID 6) to check remote parameter support
+            try:
+                rbp_flags = await opentherm_app.read_extra_boiler_params_support()
+                boiler_values.rbp_dhw_setpoint = rbp_flags['dhw_setpoint']
+                boiler_values.rbp_maxch_setpoint = rbp_flags['maxch_setpoint']
+                send_syslog(f"RBP flags: {rbp_flags}")
+            except Exception as ex:
+                send_syslog(f"Failed to read RBP flags: {str(ex)}")
+
+            # Read static limits; rely on defaults if they fail
             try:
                 boiler_values.boiler_max_capacity, _ = await opentherm_app.read_capacity_and_min_modulation()
             except Exception as ex:
@@ -306,6 +329,15 @@ async def boiler():
                 BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
             except Exception as ex:
                 send_syslog(f"Failed to read DHW setpoint range: {str(ex)}")
+            # OT spec 5.3.5: also read max CH setpoint bounds (ID 49)
+            try:
+                boiler_values.boiler_flow_temperature_setpoint_rangemin, boiler_values.boiler_flow_temperature_setpoint_rangemax = await opentherm_app.read_maxch_setpoint_range()
+                tmp = json.loads(BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
+                tmp['min'] = boiler_values.boiler_flow_temperature_setpoint_rangemin
+                tmp['max'] = boiler_values.boiler_flow_temperature_setpoint_rangemax
+                BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
+            except Exception as ex:
+                send_syslog(f"Failed to read max CH setpoint range: {str(ex)}")
 
             while True:
                 # errors happen all the damn time, so we just ignore them as per the protocol

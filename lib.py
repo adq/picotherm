@@ -91,6 +91,10 @@ def frame_decode(frame: int) -> tuple[int, int, int]:
         send_syslog(f"ERROR: Parity bit error, frame: {hex(frame)}")
         raise ValueError("Parity bit error")
 
+    # OT spec 4.2.3: spare bits (27-24) should always be 0
+    if (frame >> 24) & 0x0F:
+        send_syslog(f"WARNING: Non-zero spare bits in frame: {hex(frame)}")
+
     msg_type = (frame >> 28) & 0x07
     data_id = (frame >> 16) & 0xff
     data_value = frame & 0xffff
