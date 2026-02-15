@@ -123,7 +123,7 @@ def send_syslog(message, port=514, hostname="picopower", appname="main", procid=
     timestamp = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
         t[0], t[1], t[2], t[3], t[4], t[5]
     )
-    syslog_msg = f"<{pri}>{version} {timestamp} {hostname} {appname} {procid} {msgid} - {message}".encode('utf-8')
+    syslog_msg = f"<{pri}>{version} {timestamp} {hostname} {appname} {procid} {msgid} - {message}\r\n".encode('utf-8')
     try:
         sock.sendto(syslog_msg, syslog_addr)
     except Exception as ex:
