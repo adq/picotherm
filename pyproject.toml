@@ -1,18 +1,18 @@
-[tool.poetry]
+[project]
 name = "picotherm"
 version = "0.1.0"
-description = ""
-authors = ["Andrew de Quincey <adq@lidskialf.net>"]
-readme = "README.md"
+description = "MicroPython OpenTherm boiler controller"
+authors = [
+    {name = "Andrew de Quincey", email = "adq@lidskialf.net"}
+]
+requires-python = ">=3.11"
+dependencies = []
 
-[tool.poetry.dependencies]
-python = "^3.11"
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.2",
+    "pytest-cov>=4.1.0",
+]
 
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.2"
-pytest-cov = "^4.1.0"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.pytest.ini_options]
+pythonpath = "."
