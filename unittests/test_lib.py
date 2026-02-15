@@ -1,5 +1,6 @@
 import unittest
-from ..lib import manchester_encode, manchester_decode, frame_encode, frame_decode, s8, s16, f88
+from unittest.mock import patch, MagicMock, call
+from lib import manchester_encode, manchester_decode, frame_encode, frame_decode, s8, s16, f88, send_syslog
 
 
 class TestManchester(unittest.TestCase):
@@ -19,16 +20,16 @@ class TestManchester(unittest.TestCase):
         assert manchester_encode(0x12345678, invert=True) == 0xa9a6a59a9996956a
 
     def test_manchester_decode(self):
-        assert manchester_decode(0x5555555555555555) == 0xFFFFFFFF
-        assert manchester_decode(0xaaaaaaaaaaaaaaaa) == 0
-        assert manchester_decode(0x9999999999999999) == 0x55555555
-        assert manchester_decode(0x6666666666666666) == 0xAAAAAAAA
-        assert manchester_decode(0x56595a6566696a95) == 0xedcba987
+        assert manchester_decode(0x5555555555555555) == 0x00000000
+        assert manchester_decode(0xaaaaaaaaaaaaaaaa) == 0xFFFFFFFF
+        assert manchester_decode(0x9999999999999999) == 0xAAAAAAAA
+        assert manchester_decode(0x6666666666666666) == 0x55555555
+        assert manchester_decode(0x56595a6566696a95) == 0x12345678
         self.assertRaises(ValueError, manchester_decode, 0xfaaaaaaaaaaaaaaa)
         self.assertRaises(ValueError, manchester_decode, 0x0aaaaaaaaaaaaaaa)
 
     def test_manchester_encode_decode(self):
-        assert manchester_decode(manchester_encode(0xFFFFFFFF, invert=True)) == 0xFFFFFFFF
+        assert manchester_decode(manchester_encode(0xFFFFFFFF, invert=True), invert=True) == 0xFFFFFFFF
 
 
 class TestFrame(unittest.TestCase):
@@ -90,3 +91,98 @@ class TestF88(unittest.TestCase):
         self.assertAlmostEqual(f88(4095), 15.99609375)
         self.assertAlmostEqual(f88(32768), -128)
         self.assertAlmostEqual(f88(65535), -0.00390625)
+
+
+class TestSendSyslog(unittest.TestCase):
+
+    @patch('lib.socket.socket')
+    @patch('lib.time.strftime')
+    def test_send_syslog_basic(self, mock_strftime, mock_socket):
+        # Setup mocks - strftime %z returns without colon (e.g., +0000)
+        # but send_syslog converts it to RFC5424 format with colon (+00:00)
+        mock_strftime.return_value = '2024-01-01T12:00:00+0000'
+        mock_sock_instance = MagicMock()
+        mock_socket.return_value = mock_sock_instance
+
+        # Call function
+        send_syslog("Test message")
+
+        # Verify socket creation
+        mock_socket.assert_called_once_with(unittest.mock.ANY, unittest.mock.ANY)
+
+        # Verify socket options set
+        mock_sock_instance.setsockopt.assert_called_once()
+
+        # Verify message sent - RFC5424 requires colon in timezone offset
+        expected_msg = b'<13>1 2024-01-01T12:00:00+00:00 picopower main - - - Test message'
+        mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
+
+        # Verify socket closed
+        mock_sock_instance.close.assert_called_once()
+
+    @patch('lib.socket.socket')
+    @patch('lib.time.strftime')
+    def test_send_syslog_custom_params(self, mock_strftime, mock_socket):
+        # Setup mocks - strftime %z returns without colon
+        # but send_syslog converts it to RFC5424 format with colon
+        mock_strftime.return_value = '2024-01-01T12:00:00+0000'
+        mock_sock_instance = MagicMock()
+        mock_socket.return_value = mock_sock_instance
+
+        # Call function with custom parameters
+        send_syslog("Custom message", port=1514, hostname="myhost", appname="myapp", procid="123", msgid="MSG001")
+
+        # Verify message sent with custom parameters - RFC5424 requires colon
+        expected_msg = b'<13>1 2024-01-01T12:00:00+00:00 myhost myapp 123 MSG001 - Custom message'
+        mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 1514))
+
+    @patch('lib.socket.socket')
+    @patch('lib.time.strftime')
+    def test_send_syslog_timestamp_without_timezone(self, mock_strftime, mock_socket):
+        # Setup mocks - timestamp without timezone
+        mock_strftime.return_value = '2024-01-01T12:00:00'
+        mock_sock_instance = MagicMock()
+        mock_socket.return_value = mock_sock_instance
+
+        # Call function
+        send_syslog("Test message")
+
+        # Verify Z is appended for UTC
+        expected_msg = b'<13>1 2024-01-01T12:00:00Z picopower main - - - Test message'
+        mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
+
+    @patch('lib.socket.socket')
+    @patch('lib.time.strftime')
+    def test_send_syslog_socket_exception(self, mock_strftime, mock_socket):
+        # Setup mocks - strftime %z returns without colon
+        mock_strftime.return_value = '2024-01-01T12:00:00+0000'
+        mock_sock_instance = MagicMock()
+        mock_socket.return_value = mock_sock_instance
+
+        # Make sendto raise an exception
+        mock_sock_instance.sendto.side_effect = OSError("Network error")
+
+        # Call function - should not raise exception (caught in finally)
+        try:
+            send_syslog("Test message")
+        except OSError:
+            pass  # Exception is expected but socket should still close
+
+        # Verify socket is closed even on exception
+        mock_sock_instance.close.assert_called_once()
+
+    @patch('lib.socket.socket')
+    @patch('lib.time.strftime')
+    def test_send_syslog_message_format(self, mock_strftime, mock_socket):
+        # Setup mocks - strftime %z returns without colon (e.g., -0500)
+        # but send_syslog converts it to RFC5424 format with colon (-05:00)
+        mock_strftime.return_value = '2024-12-31T23:59:59-0500'
+        mock_sock_instance = MagicMock()
+        mock_socket.return_value = mock_sock_instance
+
+        # Call function
+        send_syslog("Multi word message with spaces")
+
+        # Verify full RFC5424 format with colon in timezone offset
+        expected_msg = b'<13>1 2024-12-31T23:59:59-05:00 picopower main - - - Multi word message with spaces'
+        mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))

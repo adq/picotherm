@@ -115,8 +115,12 @@ def send_syslog(message, port=514, hostname="picopower", appname="main", procid=
     pri = 13  # user.notice
     version = 1
     timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
-    # If timezone is missing, add 'Z' for UTC
-    if not timestamp.endswith('Z') and not timestamp[-5:].startswith(('+', '-')):
+    # RFC5424 requires colon in timezone offset (+00:00 not +0000)
+    if timestamp[-5:].startswith(('+', '-')):
+        # Insert colon: +0000 -> +00:00
+        timestamp = timestamp[:-2] + ':' + timestamp[-2:]
+    elif not timestamp.endswith('Z'):
+        # If no timezone info, add 'Z' for UTC
         timestamp += 'Z'
     syslog_msg = f"<{pri}>{version} {timestamp} {hostname} {appname} {procid} {msgid} - {message}".encode('utf-8')
     try:
