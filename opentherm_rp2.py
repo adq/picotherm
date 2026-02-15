@@ -5,8 +5,22 @@ from lib import manchester_encode, frame_encode, manchester_decode, frame_decode
 import asyncio
 
 
+# PIO Program Configuration
+# These constants are exported for testing and documentation
+PIO_TX_FREQ = 4000  # 4kHz -> 250µs per tick -> 500µs per Manchester bit
+PIO_RX_FREQ = 60000  # 60kHz -> 16.67µs per tick -> ~700µs timeout
+PIO_RX_TIMEOUT_LOOPS = 14  # Number of loops before timeout
+
+
 # opentherm tx - transmit pre-manchester-encoded-bits. Automatically sends start and stop bits.
 # note that the hardware is inverted for transmission - HIGH = 0, LOW = 1
+#
+# PIO Configuration:
+# - autopush=True: Automatically push ISR to FIFO when full
+# - set_init=OUT_HIGH, out_init=OUT_HIGH: Initialize pins HIGH (inverted LOW)
+# - autopull=True: Automatically pull from FIFO to OSR when empty
+# - out_shiftdir=SHIFT_LEFT: Shift OSR left (MSB first)
+# - freq=4000: 250µs per tick, 500µs per Manchester bit
 @rp2.asm_pio(autopush=True, set_init=rp2.PIO.OUT_HIGH, out_init=rp2.PIO.OUT_HIGH, autopull=True, out_shiftdir=rp2.PIO.SHIFT_LEFT)
 def opentherm_tx():
     # counter for bit writing loop
@@ -36,10 +50,13 @@ def opentherm_tx():
     label("loop")
     jmp("loop")
 
-sm_opentherm_tx = rp2.StateMachine(0, opentherm_tx, freq=4000, set_base=machine.Pin(0), out_base=machine.Pin(0)) # each tick is 250uS
-
 
 # opentherm rx - receive manchester-encoded-bits, waiting for initial start bit
+#
+# PIO Configuration:
+# - autopush=True: Automatically push ISR to FIFO when full
+# - in_shiftdir=SHIFT_LEFT: Shift ISR left (MSB first)
+# - freq=60000: 16.67µs per tick for fine-grained sampling
 @rp2.asm_pio(autopush=True, in_shiftdir=rp2.PIO.SHIFT_LEFT)
 def opentherm_rx():
     # wait for start bit
@@ -47,13 +64,13 @@ def opentherm_rx():
     wait(0, pin, 0)
 
     # kick off initial bit read
-    set(x, 14)  # 13 loops, 3 ticks per loop, 60kHz == 650uS
+    set(x, 14)  # 14 loops, ~3 ticks per loop, 60kHz == ~700µs timeout
     jmp("wait_for_bit_currently_0")
 
     # read the current bit from the GPIO
     label("read_next_bit")
     in_(pins, 1)
-    set(x, 14)  # 13 loops, 3 ticks per loop, 60kHz == 650uS
+    set(x, 14)  # 14 loops, ~3 ticks per loop, 60kHz == ~700µs timeout
     jmp(pin, "wait_for_bit_currently_1")
 
     # wait for a bit change from 0->1 or timeout
@@ -71,7 +88,10 @@ def opentherm_rx():
     jmp(x_dec, "wait_for_bit_currently_1")
     jmp("read_next_bit")
 
-sm_opentherm_rx = rp2.StateMachine(1, opentherm_rx, freq=60000, in_base=machine.Pin(1), jmp_pin=machine.Pin(1)) # each tick is 17uS
+
+# Initialize state machines
+sm_opentherm_tx = rp2.StateMachine(0, opentherm_tx, freq=PIO_TX_FREQ, set_base=machine.Pin(0), out_base=machine.Pin(0))
+sm_opentherm_rx = rp2.StateMachine(1, opentherm_rx, freq=PIO_RX_FREQ, in_base=machine.Pin(1), jmp_pin=machine.Pin(1))
 
 
 async def opentherm_exchange(msg_type: int, data_id: int, data_value: int, timeout_ms: int = 1000, debug: bool=False) -> tuple[int, int, int]:
