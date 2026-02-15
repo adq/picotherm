@@ -121,13 +121,7 @@ def send_syslog(message, port=514, hostname="picopower", appname="main", procid=
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     pri = 13  # user.notice
     version = 1
-    # MicroPython uses time.localtime() instead of strftime
-    t = time.localtime()
-    # Format: YYYY-MM-DDTHH:MM:SS+00:00
-    timestamp = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}Z".format(
-        t[0], t[1], t[2], t[3], t[4], t[5]
-    )
-    syslog_msg = f"<{pri}>{version} {timestamp} {hostname} {appname} {procid} {msgid} - {message}\r\n".encode('utf-8')
+    syslog_msg = f"<{pri}>{version} {hostname} {appname} {procid} {msgid} - {message}\r\n".encode('utf-8')
     try:
         sock.sendto(syslog_msg, syslog_addr)
     except Exception as ex:
