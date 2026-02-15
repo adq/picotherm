@@ -443,8 +443,8 @@ async def mqtt():
                 if mqc.sock:
                     try:
                         mqc.sock.close()
-                    except:
-                        pass
+                    except Exception as close_ex:
+                        send_syslog(f"MQTT socket close error: {str(close_ex)}")
                 mqc = None
             send_syslog(f"MQTT error: {str(ex)}")
             sys.print_exception(ex)

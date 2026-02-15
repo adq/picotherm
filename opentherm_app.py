@@ -1,5 +1,5 @@
 import asyncio
-from lib import s8, s16, f88
+from lib import s8, s16, f88, send_syslog
 
 try:
     from opentherm_rp2 import opentherm_exchange
@@ -132,10 +132,14 @@ def _check_response_type(r_msg_type: int, expected_type: int, r_data_id: int, ex
         raise UnknownDataIdError(f"Boiler does not support data ID {expected_data_id}")
 
     if r_msg_type != expected_type:
-        raise AssertionError(f"Expected msg_type {expected_type}, got {r_msg_type} for data ID {expected_data_id}")
+        msg = f"Expected msg_type {expected_type}, got {r_msg_type} for data ID {expected_data_id}"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     if r_data_id != expected_data_id:
-        raise AssertionError(f"Expected data_id {expected_data_id}, got {r_data_id}")
+        msg = f"Expected data_id {expected_data_id}, got {r_data_id}"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
 
 async def status_exchange(
@@ -225,7 +229,10 @@ async def read_secondary_product_version() -> tuple[int, int]:
 
 
 async def control_ch_setpoint(setpoint: float):
-    assert setpoint >= 0 and setpoint <= 100
+    if not (setpoint >= 0 and setpoint <= 100):
+        msg = f"Invalid CH setpoint {setpoint}, must be 0-100"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_TSET, int(setpoint * 256)
@@ -242,7 +249,10 @@ async def read_ch_setpoint() -> float:
 
 
 async def control_ch2_setpoint(setpoint: float):
-    assert setpoint >= 0 and setpoint <= 100
+    if not (setpoint >= 0 and setpoint <= 100):
+        msg = f"Invalid CH2 setpoint {setpoint}, must be 0-100"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_TSETCH2, int(setpoint * 256)
@@ -260,7 +270,10 @@ async def read_dhw_setpoint_range() -> tuple[int, int]:
 
 
 async def control_dhw_setpoint(setpoint: float):
-    assert setpoint >= 0 and setpoint <= 100
+    if not (setpoint >= 0 and setpoint <= 100):
+        msg = f"Invalid DHW setpoint {setpoint}, must be 0-100"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_TDHWSET, int(setpoint * 256)
@@ -277,7 +290,10 @@ async def read_dhw_setpoint() -> float:
 
 
 async def control_room_setpoint(setpoint: float):
-    assert setpoint >= -40 and setpoint <= 127
+    if not (setpoint >= -40 and setpoint <= 127):
+        msg = f"Invalid room setpoint {setpoint}, must be -40 to 127"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_TRSET, int(setpoint * 256)
@@ -294,7 +310,10 @@ async def read_room_setpoint() -> float:
 
 
 async def control_room_setpoint_ch2(setpoint: float):
-    assert setpoint >= -40 and setpoint <= 127
+    if not (setpoint >= -40 and setpoint <= 127):
+        msg = f"Invalid room setpoint CH2 {setpoint}, must be -40 to 127"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_TRSETCH2, int(setpoint * 256)
@@ -303,7 +322,10 @@ async def control_room_setpoint_ch2(setpoint: float):
 
 
 async def control_room_temperature(setpoint: float):
-    assert setpoint >= -40 and setpoint <= 127
+    if not (setpoint >= -40 and setpoint <= 127):
+        msg = f"Invalid room temperature {setpoint}, must be -40 to 127"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_TR, int(setpoint * 256)
@@ -320,7 +342,10 @@ async def read_room_temperature() -> float:
 
 
 async def control_cooling(signal: float):
-    assert signal >= 0 and signal <= 100
+    if not (signal >= 0 and signal <= 100):
+        msg = f"Invalid cooling signal {signal}, must be 0-100"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_COOLING_CONTROL, int(signal * 256)
@@ -338,7 +363,10 @@ async def read_maxch_setpoint_range() -> tuple[int, int]:
 
 
 async def control_maxch_setpoint(setpoint: float):
-    assert setpoint >= 0 and setpoint <= 100
+    if not (setpoint >= 0 and setpoint <= 100):
+        msg = f"Invalid max CH setpoint {setpoint}, must be 0-100"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
 
     r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
         MSG_TYPE_WRITE_DATA, DATA_ID_MAXTSET, int(setpoint * 256)
@@ -569,7 +597,10 @@ async def read_tsp(index: int) -> int:
         MSG_TYPE_READ_DATA, DATA_ID_TSP_DATA, (index << 8)
     )
     _check_response_type(r_msg_type, MSG_TYPE_READ_ACK, r_data_id, DATA_ID_TSP_DATA)
-    assert r_data >> 8 == index
+    if r_data >> 8 != index:
+        msg = f"TSP index mismatch: expected {index}, got {r_data >> 8}"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
     return r_data & 0xff
 
 
@@ -586,7 +617,10 @@ async def read_fhb(index: int) -> int:
         MSG_TYPE_READ_DATA, DATA_ID_FHB_DATA, (index << 8)
     )
     _check_response_type(r_msg_type, MSG_TYPE_READ_ACK, r_data_id, DATA_ID_FHB_DATA)
-    assert r_data >> 8 == index
+    if r_data >> 8 != index:
+        msg = f"FHB index mismatch: expected {index}, got {r_data >> 8}"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
     return r_data & 0xff
 
 
@@ -595,7 +629,10 @@ async def control_remote_command(command: int):
         MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, command << 8
     )
     _check_response_type(r_msg_type, MSG_TYPE_WRITE_ACK, r_data_id, DATA_ID_COMMAND)
-    assert r_data >> 8 == command
+    if r_data >> 8 != command:
+        msg = f"Remote command mismatch: expected {command}, got {r_data >> 8}"
+        send_syslog(f"ERROR: {msg}")
+        raise ValueError(msg)
     return r_data & 0xff
 
 

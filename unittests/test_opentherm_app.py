@@ -66,9 +66,9 @@ class TestOpenThermApp_control_ch_setpoint(unittest.TestCase):
 
     @async_test
     async def test_control_ch_setpoint_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_ch_setpoint(-1)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_ch_setpoint(101)
 
 
@@ -110,9 +110,9 @@ class TestOpenThermApp_control_dhw_setpoint(unittest.TestCase):
 
     @async_test
     async def test_control_dhw_setpoint_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_dhw_setpoint(-1)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_dhw_setpoint(101)
 
 
@@ -451,9 +451,9 @@ class TestOpenThermApp_control_room_setpoint(unittest.TestCase):
 
     @async_test
     async def test_control_room_setpoint_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_room_setpoint(-41)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_room_setpoint(128)
 
 
@@ -485,9 +485,9 @@ class TestOpenThermApp_control_room_setpoint_ch2(unittest.TestCase):
 
     @async_test
     async def test_control_room_setpoint_ch2_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_room_setpoint_ch2(-41)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_room_setpoint_ch2(128)
 
 
@@ -501,9 +501,9 @@ class TestOpenThermApp_control_room_temperature(unittest.TestCase):
 
     @async_test
     async def test_control_room_temperature_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_room_temperature(-41)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_room_temperature(128)
 
 
@@ -1048,9 +1048,9 @@ class TestOpenThermApp_control_ch2_setpoint(unittest.TestCase):
 
     @async_test
     async def test_control_ch2_setpoint_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_ch2_setpoint(-1)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_ch2_setpoint(101)
 
 
@@ -1064,9 +1064,9 @@ class TestOpenThermApp_control_cooling(unittest.TestCase):
 
     @async_test
     async def test_control_cooling_invalid(self):
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_cooling(-1)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_cooling(101)
 
 
@@ -1259,21 +1259,21 @@ class TestOpenThermApp_control_remote_command(unittest.TestCase):
     @async_test
     async def test_control_remote_command_wrong_msg_type(self, mock_opentherm_exchange):
         mock_opentherm_exchange.return_value = (MSG_TYPE_WRITE_DATA, DATA_ID_COMMAND, 0)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_remote_command(10)
 
     @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
     @async_test
     async def test_control_remote_command_wrong_data_id(self, mock_opentherm_exchange):
         mock_opentherm_exchange.return_value = (MSG_TYPE_WRITE_ACK, DATA_ID_STATUS, 0)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_remote_command(10)
 
     @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
     @async_test
     async def test_control_remote_command_wrong_data(self, mock_opentherm_exchange):
         mock_opentherm_exchange.return_value = (MSG_TYPE_WRITE_ACK, DATA_ID_COMMAND, 0)
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             await control_remote_command(10)
 
 

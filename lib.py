@@ -48,12 +48,14 @@ def manchester_decode(mframe: int, invert: bool = False) -> int:
     for i in range(32):
         if mframe & mask:
             if mframe & mask2:
+                send_syslog(f"ERROR: Manchester decoding error at bit {i}")
                 raise ValueError("Manchester decoding error")
             frame <<= 1
             frame |= one
 
         else:
             if not (mframe & mask2):
+                send_syslog(f"ERROR: Manchester decoding error at bit {i}")
                 raise ValueError("Manchester decoding error")
             frame <<= 1
             frame |= zero
@@ -86,6 +88,7 @@ def frame_decode(frame: int) -> tuple[int, int, int]:
 
     parity = bin(frame).count("1")
     if parity & 1:
+        send_syslog(f"ERROR: Parity bit error, frame: {hex(frame)}")
         raise ValueError("Parity bit error")
 
     msg_type = (frame >> 28) & 0x07
@@ -125,6 +128,8 @@ def send_syslog(message, port=514, hostname="picopower", appname="main", procid=
     syslog_msg = f"<{pri}>{version} {timestamp} {hostname} {appname} {procid} {msgid} - {message}".encode('utf-8')
     try:
         sock.sendto(syslog_msg, syslog_addr)
+    except Exception as ex:
+        print(f"Syslog send failed: {ex}")
     finally:
         sock.close()
 

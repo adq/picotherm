@@ -63,12 +63,12 @@ class TestMQTTClientSetLastWill(unittest.TestCase):
 
     def test_set_last_will_invalid_qos(self):
         client = MQTTClient("test_client", "test.server.com")
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             client.set_last_will("status/test", "offline", qos=3)
 
     def test_set_last_will_empty_topic(self):
         client = MQTTClient("test_client", "test.server.com")
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             client.set_last_will("", "offline")
 
 
@@ -164,7 +164,7 @@ class TestMQTTClientSubscribe(unittest.TestCase):
         client = MQTTClient("test_client", "test.server.com")
         client.sock = MagicMock()
 
-        with self.assertRaises(AssertionError):
+        with self.assertRaises(ValueError):
             client.subscribe("test/topic")
 
     def test_subscribe_success(self):

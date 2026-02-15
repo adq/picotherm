@@ -55,8 +55,10 @@ class MQTTClient:
         self.cb = f
 
     def set_last_will(self, topic, msg, retain=False, qos=0):
-        assert 0 <= qos <= 2
-        assert topic
+        if not (0 <= qos <= 2):
+            raise ValueError(f"MQTT: Invalid QoS {qos}, must be 0-2")
+        if not topic:
+            raise ValueError("MQTT: Topic cannot be empty")
         self.lw_topic = topic
         self.lw_msg = msg
         self.lw_qos = qos
@@ -83,7 +85,8 @@ class MQTTClient:
             sz += 2 + len(self.user) + 2 + len(self.pswd)
             msg[6] |= 0xC0
         if self.keepalive:
-            assert self.keepalive < 65536
+            if not self.keepalive < 65536:
+                raise ValueError(f"MQTT: Invalid keepalive {self.keepalive}, must be < 65536")
             msg[7] |= self.keepalive >> 8
             msg[8] |= self.keepalive & 0x00FF
         if self.lw_topic:
@@ -109,7 +112,8 @@ class MQTTClient:
             self._send_str(self.user)
             self._send_str(self.pswd)
         resp = self.sock.read(4)
-        assert resp[0] == 0x20 and resp[1] == 0x02
+        if not (resp[0] == 0x20 and resp[1] == 0x02):
+            raise MQTTException(f"MQTT: Invalid CONNACK response: {hexlify(resp)}")
         if resp[3] != 0:
             raise MQTTException(resp[3])
         return resp[2] & 1
@@ -127,7 +131,8 @@ class MQTTClient:
         sz = 2 + len(topic) + len(msg)
         if qos > 0:
             sz += 2
-        assert sz < 2097152
+        if not sz < 2097152:
+            raise ValueError(f"MQTT: Message too large: {sz} bytes (max 2097152)")
         i = 1
         while sz > 0x7F:
             pkt[i] = (sz & 0x7F) | 0x80
@@ -148,16 +153,18 @@ class MQTTClient:
                 op = self.wait_msg()
                 if op == 0x40:
                     sz = self.sock.read(1)
-                    assert sz == b"\x02"
+                    if sz != b"\x02":
+                        raise MQTTException(f"MQTT: Invalid PUBACK size: {sz}")
                     rcv_pid = self.sock.read(2)
                     rcv_pid = rcv_pid[0] << 8 | rcv_pid[1]
                     if pid == rcv_pid:
                         return
         elif qos == 2:
-            assert 0
+            raise NotImplementedError("MQTT: QoS 2 not implemented")
 
     def subscribe(self, topic, qos=0):
-        assert self.cb is not None, "Subscribe callback is not set"
+        if self.cb is None:
+            raise ValueError("MQTT: Subscribe callback is not set")
         pkt = bytearray(b"\x82\0\0\0")
         self.pid += 1
         struct.pack_into("!BH", pkt, 1, 2 + 2 + len(topic) + 1, self.pid)
@@ -170,7 +177,8 @@ class MQTTClient:
             if op == 0x90:
                 resp = self.sock.read(4)
                 # print(resp)
-                assert resp[1] == pkt[2] and resp[2] == pkt[3]
+                if not (resp[1] == pkt[2] and resp[2] == pkt[3]):
+                    raise MQTTException(f"MQTT: SUBACK packet ID mismatch")
                 if resp[3] == 0x80:
                     raise MQTTException(resp[3])
                 return
@@ -188,7 +196,8 @@ class MQTTClient:
             raise OSError(-1)
         if res == b"\xd0":  # PINGRESP
             sz = self.sock.read(1)[0]
-            assert sz == 0
+            if sz != 0:
+                raise MQTTException(f"MQTT: Invalid PINGRESP size: {sz}")
             return None
         op = res[0]
         if op & 0xF0 != 0x30:
@@ -209,7 +218,7 @@ class MQTTClient:
             struct.pack_into("!H", pkt, 2, pid)
             self.sock.write(pkt)
         elif op & 6 == 4:
-            assert 0
+            raise NotImplementedError("MQTT: QoS 2 PUBREL not implemented")
         return op
 
     # Checks whether a pending message from server is available.

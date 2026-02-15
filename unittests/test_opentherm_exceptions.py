@@ -51,13 +51,13 @@ class TestCheckResponseType(unittest.TestCase):
 
     def test_wrong_msg_type_raises_assertion(self):
         """_check_response_type should raise AssertionError for unexpected msg_type"""
-        with self.assertRaises(AssertionError) as cm:
+        with self.assertRaises(ValueError) as cm:
             _check_response_type(MSG_TYPE_WRITE_ACK, MSG_TYPE_READ_ACK, DATA_ID_STATUS, DATA_ID_STATUS)
         self.assertIn("Expected msg_type", str(cm.exception))
 
     def test_wrong_data_id_raises_assertion(self):
         """_check_response_type should raise AssertionError for unexpected data_id"""
-        with self.assertRaises(AssertionError) as cm:
+        with self.assertRaises(ValueError) as cm:
             _check_response_type(MSG_TYPE_READ_ACK, MSG_TYPE_READ_ACK, DATA_ID_TSET, DATA_ID_STATUS)
         self.assertIn("Expected data_id", str(cm.exception))
         self.assertIn(str(DATA_ID_STATUS), str(cm.exception))
