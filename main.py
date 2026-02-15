@@ -1,11 +1,11 @@
 import opentherm_app
 import time
 import asyncio
-import mqtt_async
 import cfgsecrets
 import json
 import sys
-import rp2
+from lib import send_syslog
+from umqtt.robust import MQTTClient
 
 
 class BoilerValues():
@@ -242,12 +242,14 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
     if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
         boiler_value = int(await opentherm_app.read_ch_setpoint())
         if boiler_value != int(boiler_values.boiler_flow_temperature_setpoint):
-            print("wrote ch setpoint", boiler_value, "->", boiler_values.boiler_flow_temperature_setpoint)
+            msg = f"wrote ch setpoint {boiler_value} -> {boiler_values.boiler_flow_temperature_setpoint}"
+            send_syslog(msg)
             await opentherm_app.control_ch_setpoint(int(boiler_values.boiler_flow_temperature_setpoint))
 
         boiler_value = int(await opentherm_app.read_dhw_setpoint())
         if boiler_value != int(boiler_values.boiler_dhw_temperature_setpoint):
-            print("wrote dhw setpoint", boiler_value, "->", boiler_values.boiler_dhw_temperature_setpoint)
+            msg = f"wrote dhw setpoint {boiler_value} -> {boiler_values.boiler_dhw_temperature_setpoint}"
+            send_syslog(msg)
             await opentherm_app.control_dhw_setpoint(int(boiler_values.boiler_dhw_temperature_setpoint))
         last_write_settings_timestamp = time.ticks_ms()
 
@@ -283,19 +285,19 @@ async def boiler():
                 try:
                     last_get_detail_timestamp, last_write_settings_timestamp = await boiler_loop(last_get_detail_timestamp, last_write_settings_timestamp)
                 except Exception as ex:
+                    send_syslog(str(ex))
                     sys.print_exception(ex)
 
                 # sleep and then do it all again
                 await asyncio.sleep_ms(STATUS_LOOP_DELAY_MS)
 
         except Exception as ex:
-            print("BOILERFAIL")
+            send_syslog(f"BOILERFAIL: {str(ex)}")
             sys.print_exception(ex)
             await asyncio.sleep(5)
 
 
-
-def msg_callback(topic, msg, retained, qos, dup):
+def mqtt_callback(topic, msg):
     global boiler_values
 
     if topic == b'homeassistant/switch/boilerCHEnabled/command':
@@ -328,85 +330,93 @@ def msg_callback(topic, msg, retained, qos, dup):
         except ValueError:
             pass
 
+async def mqtt_publish(mqc):
+    global boiler_values
 
-async def conn_callback(client):
-    await client.subscribe('homeassistant/switch/boilerCHEnabled/command')
-    await client.subscribe('homeassistant/number/boilerCHFlowTemperatureSetpoint/command')
-    await client.subscribe('homeassistant/switch/boilerDHWEnabled/command')
-    await client.subscribe('homeassistant/number/boilerDHWFlowTemperatureSetpoint/command')
+    # publish all the config jsons
+    mqc.publish("homeassistant/sensor/boilerReturnTemperature/config", BOILER_RETURN_TEMPERATURE_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerExhaustTemperature/config", BOILER_EXHAUST_TEMPERATURE_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerFanSpeed/config", BOILER_FAN_SPEED_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerModulationLevel/config", BOILER_MODULATION_LEVEL_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerChPressure/config", BOILER_CH_PRESSURE_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerDhwFlowRate/config", BOILER_DHW_FLOW_RATE_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerMaxCapacity/config", BOILER_MAX_CAPACITY_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerFlameActive/config", BOILER_FLAME_ACTIVE_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerFaultActive/config", BOILER_FAULT_ACTIVE_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerFaultLowWaterPressure/config", BOILER_FAULT_LOW_WATER_PRESSURE_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerFaultFlame/config", BOILER_FAULT_FLAME_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/config", BOILER_FAULT_LOW_AIR_PRESSURE_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/config", BOILER_FAULT_HIGH_WATER_TEMPERATURE_HASS_CONFIG)
+
+    mqc.publish("homeassistant/switch/boilerCHEnabled/config", BOILER_CH_ENABLED_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerCHFlowTemperature/config", BOILER_CH_FLOW_TEMPERATURE_HASS_CONFIG)
+    mqc.publish("homeassistant/number/boilerCHFlowTemperatureSetpoint/config", BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerCHActive/config", BOILER_CH_ACTIVE_HASS_CONFIG)
+
+    mqc.publish("homeassistant/switch/boilerDHWEnabled/config", BOILER_DHW_ENABLED_HASS_CONFIG)
+    mqc.publish("homeassistant/sensor/boilerDHWFlowTemperature/config", BOILER_DHW_FLOW_TEMPERATURE_HASS_CONFIG)
+    mqc.publish("homeassistant/number/boilerDHWFlowTemperatureSetpoint/config", BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
+    mqc.publish("homeassistant/binary_sensor/boilerDHWActive/config", BOILER_DHW_ACTIVE_HASS_CONFIG)
+
+    # publish all the states
+    mqc.publish("homeassistant/sensor/boilerReturnTemperature/state", str(round(boiler_values.boiler_return_temperature, 2)))
+    mqc.publish("homeassistant/sensor/boilerExhaustTemperature/state", str(round(boiler_values.boiler_exhaust_temperature, 2)))
+    mqc.publish("homeassistant/sensor/boilerFanSpeed/state", str(round(boiler_values.boiler_fan_speed, 2)))
+    mqc.publish("homeassistant/sensor/boilerModulationLevel/state", str(round(boiler_values.boiler_modulation_level, 2)))
+    mqc.publish("homeassistant/sensor/boilerChPressure/state", str(round(boiler_values.boiler_ch_pressure, 2)))
+    mqc.publish("homeassistant/sensor/boilerDhwFlowRate/state", str(round(boiler_values.boiler_dhw_flow_rate, 2)))
+    mqc.publish("homeassistant/sensor/boilerMaxCapacity/state", str(boiler_values.boiler_max_capacity))
+    mqc.publish("homeassistant/binary_sensor/boilerFlameActive/state", 'ON' if boiler_values.boiler_flame_active else 'OFF')
+    mqc.publish("homeassistant/binary_sensor/boilerFaultActive/state", 'ON' if boiler_values.boiler_fault_active else 'OFF')
+    mqc.publish("homeassistant/binary_sensor/boilerFaultLowWaterPressure/state", 'ON' if boiler_values.boiler_fault_low_water_pressure else 'OFF')
+    mqc.publish("homeassistant/binary_sensor/boilerFaultFlame/state", 'ON' if boiler_values.boiler_fault_flame else 'OFF')
+    mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/state", 'ON' if boiler_values.boiler_fault_low_air_pressure else 'OFF')
+    mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/state", 'ON' if boiler_values.boiler_fault_high_water_temperature else 'OFF')
+
+    mqc.publish("homeassistant/sensor/boilerCHFlowTemperature/state", str(round(boiler_values.boiler_flow_temperature, 2)))
+    mqc.publish("homeassistant/switch/boilerCHEnabled/state", 'ON' if boiler_values.boiler_ch_enabled else 'OFF')
+    mqc.publish("homeassistant/number/boilerCHFlowTemperatureSetpoint/state", str(round(boiler_values.boiler_flow_temperature_setpoint, 2)))
+    mqc.publish("homeassistant/binary_sensor/boilerCHActive/state", 'ON' if boiler_values.boiler_ch_active else 'OFF')
+
+    mqc.publish("homeassistant/sensor/boilerDHWFlowTemperature/state", str(round(boiler_values.boiler_dhw_temperature, 2)))
+    mqc.publish("homeassistant/switch/boilerDHWEnabled/state", 'ON' if boiler_values.boiler_dhw_enabled else 'OFF')
+    mqc.publish("homeassistant/number/boilerDHWFlowTemperatureSetpoint/state", str(round(boiler_values.boiler_dhw_temperature_setpoint, 2)))
+    mqc.publish("homeassistant/binary_sensor/boilerDHWActive/state", 'ON' if boiler_values.boiler_dhw_active else 'OFF')
 
 
 async def mqtt():
     global boiler_values
 
-    rp2.country('GB')
-    mqtt_async.config['ssid'] = cfgsecrets.WIFI_SSID
-    mqtt_async.config['wifi_pw'] = cfgsecrets.WIFI_PASSWORD
-    mqtt_async.config['server'] = cfgsecrets.MQTT_HOST
-    mqtt_async.config['subs_cb'] = msg_callback
-    mqtt_async.config['connect_coro'] = conn_callback
-
+    mqc = None
     while True:
         try:
-            mqc = mqtt_async.MQTTClient(mqtt_async.config)
-            await mqc.connect()
-            print("MQTT connected")
+            mqc = MQTTClient("picotherm", cfgsecrets.MQTT_HOST, keepalive=60)
+            mqc.connect()
+            mqc.set_callback(mqtt_callback)
+            mqc.subscribe('homeassistant/switch/boilerCHEnabled/command')
+            mqc.subscribe('homeassistant/number/boilerCHFlowTemperatureSetpoint/command')
+            mqc.subscribe('homeassistant/switch/boilerDHWEnabled/command')
+            mqc.subscribe('homeassistant/number/boilerDHWFlowTemperatureSetpoint/command')
+            send_syslog("MQTT connected")
 
+            last_publish_stamp = time.ticks_ms()
             while True:
-                # publish all the config jsons
-                await mqc.publish("homeassistant/sensor/boilerReturnTemperature/config", BOILER_RETURN_TEMPERATURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerExhaustTemperature/config", BOILER_EXHAUST_TEMPERATURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerFanSpeed/config", BOILER_FAN_SPEED_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerModulationLevel/config", BOILER_MODULATION_LEVEL_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerChPressure/config", BOILER_CH_PRESSURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerDhwFlowRate/config", BOILER_DHW_FLOW_RATE_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerMaxCapacity/config", BOILER_MAX_CAPACITY_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerFlameActive/config", BOILER_FLAME_ACTIVE_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultActive/config", BOILER_FAULT_ACTIVE_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowWaterPressure/config", BOILER_FAULT_LOW_WATER_PRESSURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultFlame/config", BOILER_FAULT_FLAME_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/config", BOILER_FAULT_LOW_AIR_PRESSURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/config", BOILER_FAULT_HIGH_WATER_TEMPERATURE_HASS_CONFIG)
+                if last_publish_stamp + MQTT_PUBLISH_MS >= time.ticks_ms():
+                    send_syslog('MQTT PING')
+                    await mqtt_publish(mqc)
+                    last_publish_stamp = time.ticks_ms()
 
-                await mqc.publish("homeassistant/switch/boilerCHEnabled/config", BOILER_CH_ENABLED_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerCHFlowTemperature/config", BOILER_CH_FLOW_TEMPERATURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/number/boilerCHFlowTemperatureSetpoint/config", BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerCHActive/config", BOILER_CH_ACTIVE_HASS_CONFIG)
-
-                await mqc.publish("homeassistant/switch/boilerDHWEnabled/config", BOILER_DHW_ENABLED_HASS_CONFIG)
-                await mqc.publish("homeassistant/sensor/boilerDHWFlowTemperature/config", BOILER_DHW_FLOW_TEMPERATURE_HASS_CONFIG)
-                await mqc.publish("homeassistant/number/boilerDHWFlowTemperatureSetpoint/config", BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
-                await mqc.publish("homeassistant/binary_sensor/boilerDHWActive/config", BOILER_DHW_ACTIVE_HASS_CONFIG)
-
-                # publish all the states
-                await mqc.publish("homeassistant/sensor/boilerReturnTemperature/state", str(round(boiler_values.boiler_return_temperature, 2)))
-                await mqc.publish("homeassistant/sensor/boilerExhaustTemperature/state", str(round(boiler_values.boiler_exhaust_temperature, 2)))
-                await mqc.publish("homeassistant/sensor/boilerFanSpeed/state", str(round(boiler_values.boiler_fan_speed, 2)))
-                await mqc.publish("homeassistant/sensor/boilerModulationLevel/state", str(round(boiler_values.boiler_modulation_level, 2)))
-                await mqc.publish("homeassistant/sensor/boilerChPressure/state", str(round(boiler_values.boiler_ch_pressure, 2)))
-                await mqc.publish("homeassistant/sensor/boilerDhwFlowRate/state", str(round(boiler_values.boiler_dhw_flow_rate, 2)))
-                await mqc.publish("homeassistant/sensor/boilerMaxCapacity/state", str(boiler_values.boiler_max_capacity))
-                await mqc.publish("homeassistant/binary_sensor/boilerFlameActive/state", 'ON' if boiler_values.boiler_flame_active else 'OFF')
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultActive/state", 'ON' if boiler_values.boiler_fault_active else 'OFF')
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowWaterPressure/state", 'ON' if boiler_values.boiler_fault_low_water_pressure else 'OFF')
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultFlame/state", 'ON' if boiler_values.boiler_fault_flame else 'OFF')
-                await mqc.publish("homeassistant/binary_sensor/boilerFaultLowAirPressure/state", 'ON' if boiler_values.boiler_fault_low_air_pressure else 'OFF')
-                await mqc.publish("homeassistant/binary_sensor/boilerHighWaterTemperature/state", 'ON' if boiler_values.boiler_fault_high_water_temperature else 'OFF')
-
-                await mqc.publish("homeassistant/sensor/boilerCHFlowTemperature/state", str(round(boiler_values.boiler_flow_temperature, 2)))
-                await mqc.publish("homeassistant/switch/boilerCHEnabled/state", 'ON' if boiler_values.boiler_ch_enabled else 'OFF')
-                await mqc.publish("homeassistant/number/boilerCHFlowTemperatureSetpoint/state", str(round(boiler_values.boiler_flow_temperature_setpoint, 2)))
-                await mqc.publish("homeassistant/binary_sensor/boilerCHActive/state", 'ON' if boiler_values.boiler_ch_active else 'OFF')
-
-                await mqc.publish("homeassistant/sensor/boilerDHWFlowTemperature/state", str(round(boiler_values.boiler_dhw_temperature, 2)))
-                await mqc.publish("homeassistant/switch/boilerDHWEnabled/state", 'ON' if boiler_values.boiler_dhw_enabled else 'OFF')
-                await mqc.publish("homeassistant/number/boilerDHWFlowTemperatureSetpoint/state", str(round(boiler_values.boiler_dhw_temperature_setpoint, 2)))
-                await mqc.publish("homeassistant/binary_sensor/boilerDHWActive/state", 'ON' if boiler_values.boiler_dhw_active else 'OFF')
-
-                await asyncio.sleep_ms(MQTT_PUBLISH_MS)
+                await asyncio.sleep_ms(10)
+                mqc.check_msg()
 
         except Exception as ex:
-            print("MQTTFAIL")
+            if mqc:
+                try:
+                    mqc.sock.close()
+                except:
+                    pass
+                mqc = None
+            send_syslog(f"MQTT error: {str(ex)}")
             sys.print_exception(ex)
             await asyncio.sleep(5)
 
