@@ -439,11 +439,12 @@ async def mqtt():
                 mqc.check_msg()
 
         except Exception as ex:
-            if mqc and mqc.sock:
-                try:
-                    mqc.sock.close()
-                except:
-                    pass
+            if mqc:
+                if mqc.sock:
+                    try:
+                        mqc.sock.close()
+                    except:
+                        pass
                 mqc = None
             send_syslog(f"MQTT error: {str(ex)}")
             sys.print_exception(ex)
