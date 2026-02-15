@@ -96,11 +96,11 @@ class TestF88(unittest.TestCase):
 class TestSendSyslog(unittest.TestCase):
 
     @patch('lib.socket.socket')
-    @patch('lib.time.strftime')
-    def test_send_syslog_basic(self, mock_strftime, mock_socket):
-        # Setup mocks - strftime %z returns without colon (e.g., +0000)
-        # but send_syslog converts it to RFC5424 format with colon (+00:00)
-        mock_strftime.return_value = '2024-01-01T12:00:00+0000'
+    @patch('lib.time.localtime')
+    def test_send_syslog_basic(self, mock_localtime, mock_socket):
+        # Setup mocks - localtime returns struct_time tuple
+        # (year, month, day, hour, minute, second, weekday, yearday, isdst)
+        mock_localtime.return_value = (2024, 1, 1, 12, 0, 0, 0, 1, 0)
         mock_sock_instance = MagicMock()
         mock_socket.return_value = mock_sock_instance
 
@@ -113,49 +113,48 @@ class TestSendSyslog(unittest.TestCase):
         # Verify socket options set
         mock_sock_instance.setsockopt.assert_called_once()
 
-        # Verify message sent - RFC5424 requires colon in timezone offset
-        expected_msg = b'<13>1 2024-01-01T12:00:00+00:00 picopower main - - - Test message'
+        # Verify message sent - implementation always uses Z for UTC and adds \r\n
+        expected_msg = b'<13>1 2024-01-01T12:00:00Z picopower main - - - Test message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
 
         # Verify socket closed
         mock_sock_instance.close.assert_called_once()
 
     @patch('lib.socket.socket')
-    @patch('lib.time.strftime')
-    def test_send_syslog_custom_params(self, mock_strftime, mock_socket):
-        # Setup mocks - strftime %z returns without colon
-        # but send_syslog converts it to RFC5424 format with colon
-        mock_strftime.return_value = '2024-01-01T12:00:00+0000'
+    @patch('lib.time.localtime')
+    def test_send_syslog_custom_params(self, mock_localtime, mock_socket):
+        # Setup mocks - localtime returns struct_time tuple
+        mock_localtime.return_value = (2024, 1, 1, 12, 0, 0, 0, 1, 0)
         mock_sock_instance = MagicMock()
         mock_socket.return_value = mock_sock_instance
 
         # Call function with custom parameters
         send_syslog("Custom message", port=1514, hostname="myhost", appname="myapp", procid="123", msgid="MSG001")
 
-        # Verify message sent with custom parameters - RFC5424 requires colon
-        expected_msg = b'<13>1 2024-01-01T12:00:00+00:00 myhost myapp 123 MSG001 - Custom message'
+        # Verify message sent with custom parameters - implementation always uses Z for UTC and adds \r\n
+        expected_msg = b'<13>1 2024-01-01T12:00:00Z myhost myapp 123 MSG001 - Custom message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 1514))
 
     @patch('lib.socket.socket')
-    @patch('lib.time.strftime')
-    def test_send_syslog_timestamp_without_timezone(self, mock_strftime, mock_socket):
-        # Setup mocks - timestamp without timezone
-        mock_strftime.return_value = '2024-01-01T12:00:00'
+    @patch('lib.time.localtime')
+    def test_send_syslog_timestamp_without_timezone(self, mock_localtime, mock_socket):
+        # Setup mocks - localtime returns struct_time tuple
+        mock_localtime.return_value = (2024, 1, 1, 12, 0, 0, 0, 1, 0)
         mock_sock_instance = MagicMock()
         mock_socket.return_value = mock_sock_instance
 
         # Call function
         send_syslog("Test message")
 
-        # Verify Z is appended for UTC
-        expected_msg = b'<13>1 2024-01-01T12:00:00Z picopower main - - - Test message'
+        # Verify Z is appended for UTC and \r\n is added
+        expected_msg = b'<13>1 2024-01-01T12:00:00Z picopower main - - - Test message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
 
     @patch('lib.socket.socket')
-    @patch('lib.time.strftime')
-    def test_send_syslog_socket_exception(self, mock_strftime, mock_socket):
-        # Setup mocks - strftime %z returns without colon
-        mock_strftime.return_value = '2024-01-01T12:00:00+0000'
+    @patch('lib.time.localtime')
+    def test_send_syslog_socket_exception(self, mock_localtime, mock_socket):
+        # Setup mocks - localtime returns struct_time tuple
+        mock_localtime.return_value = (2024, 1, 1, 12, 0, 0, 0, 1, 0)
         mock_sock_instance = MagicMock()
         mock_socket.return_value = mock_sock_instance
 
@@ -172,17 +171,16 @@ class TestSendSyslog(unittest.TestCase):
         mock_sock_instance.close.assert_called_once()
 
     @patch('lib.socket.socket')
-    @patch('lib.time.strftime')
-    def test_send_syslog_message_format(self, mock_strftime, mock_socket):
-        # Setup mocks - strftime %z returns without colon (e.g., -0500)
-        # but send_syslog converts it to RFC5424 format with colon (-05:00)
-        mock_strftime.return_value = '2024-12-31T23:59:59-0500'
+    @patch('lib.time.localtime')
+    def test_send_syslog_message_format(self, mock_localtime, mock_socket):
+        # Setup mocks - localtime returns struct_time tuple
+        mock_localtime.return_value = (2024, 12, 31, 23, 59, 59, 0, 366, 0)
         mock_sock_instance = MagicMock()
         mock_socket.return_value = mock_sock_instance
 
         # Call function
         send_syslog("Multi word message with spaces")
 
-        # Verify full RFC5424 format with colon in timezone offset
-        expected_msg = b'<13>1 2024-12-31T23:59:59-05:00 picopower main - - - Multi word message with spaces'
+        # Verify full RFC5424 format - implementation always uses Z for UTC and adds \r\n
+        expected_msg = b'<13>1 2024-12-31T23:59:59Z picopower main - - - Multi word message with spaces\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))

@@ -33,6 +33,7 @@ from lib import manchester_encode, manchester_decode, frame_encode, frame_decode
 class TestPIOLoopback:
     """Tests that require GPIO loopback (GPIO 0 -> GPIO 1)."""
 
+    @pytest.mark.asyncio
     async def test_loopback_simple_frame(self):
         """Test TX->RX loopback with a simple frame."""
         if not ON_DEVICE:
@@ -57,6 +58,7 @@ class TestPIOLoopback:
                 print(f"FAIL: Unexpected exception: {e}")
                 raise
 
+    @pytest.mark.asyncio
     async def test_tx_timing(self):
         """Verify TX timing by measuring output pin transitions."""
         if not ON_DEVICE:
@@ -73,6 +75,7 @@ class TestPIOLoopback:
 
         print("TODO: Implement timing measurement with GPIO monitoring")
 
+    @pytest.mark.asyncio
     async def test_rx_sensitivity(self):
         """Test RX can detect valid OpenTherm signals."""
         if not ON_DEVICE:
@@ -93,6 +96,7 @@ class TestPIOLoopback:
 class TestPIOManualValidation:
     """Manual validation tests - require human verification."""
 
+    @pytest.mark.asyncio
     async def test_tx_output_visual(self):
         """Visual test: observe TX output with logic analyzer or oscilloscope."""
         if not ON_DEVICE:
@@ -117,6 +121,7 @@ class TestPIOManualValidation:
 
         print("Check logic analyzer for correct timing and pattern")
 
+    @pytest.mark.asyncio
     async def test_opentherm_device_communication(self):
         """Test communication with actual OpenTherm device."""
         if not ON_DEVICE:
