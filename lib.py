@@ -121,6 +121,8 @@ def send_syslog(message, port=514, hostname="picopower", appname="main", procid=
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
     pri = 13  # user.notice
     version = 1
+
+    # Omit timestamp entirely - device doesn't know the time
     syslog_msg = f"<{pri}>{version} {hostname} {appname} {procid} {msgid} - {message}\r\n".encode('utf-8')
     try:
         sock.sendto(syslog_msg, syslog_addr)
