@@ -110,7 +110,7 @@ class TestSendSyslog(unittest.TestCase):
         # Verify socket options set
         mock_sock_instance.setsockopt.assert_called_once()
 
-        # Verify message sent - no timestamp in current implementation
+        # Verify message sent - timestamp omitted since device doesn't know the time
         expected_msg = b'<13>1 picopower main - - - Test message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
 
@@ -126,12 +126,12 @@ class TestSendSyslog(unittest.TestCase):
         # Call function with custom parameters
         send_syslog("Custom message", port=1514, hostname="myhost", appname="myapp", procid="123", msgid="MSG001")
 
-        # Verify message sent with custom parameters - no timestamp in current implementation
+        # Verify message sent with custom parameters - timestamp omitted since device doesn't know the time
         expected_msg = b'<13>1 myhost myapp 123 MSG001 - Custom message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 1514))
 
     @patch('lib.socket.socket')
-    def test_send_syslog_timestamp_without_timezone(self, mock_socket):
+    def test_send_syslog_no_timestamp(self, mock_socket):
         # Setup mocks
         mock_sock_instance = MagicMock()
         mock_socket.return_value = mock_sock_instance
@@ -139,7 +139,7 @@ class TestSendSyslog(unittest.TestCase):
         # Call function
         send_syslog("Test message")
 
-        # Verify \r\n is added (no timestamp in current implementation)
+        # Verify timestamp is omitted since device doesn't know the time
         expected_msg = b'<13>1 picopower main - - - Test message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
 
@@ -170,6 +170,6 @@ class TestSendSyslog(unittest.TestCase):
         # Call function
         send_syslog("Multi word message with spaces")
 
-        # Verify message format handles spaces (no timestamp in current implementation)
+        # Verify RFC5424 format with timestamp omitted (device doesn't know the time)
         expected_msg = b'<13>1 picopower main - - - Multi word message with spaces\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
