@@ -22,3 +22,4 @@ pythonpath = "."
 markers = [
     "hardware: tests that require actual RP2040 hardware (deselect with '-m \"not hardware\"')"
 ]
+addopts = "-m 'not hardware'"
