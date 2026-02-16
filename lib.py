@@ -48,14 +48,14 @@ def manchester_decode(mframe: int, invert: bool = False) -> int:
     for i in range(32):
         if mframe & mask:
             if mframe & mask2:
-                send_syslog(f"ERROR: Manchester decoding error at bit {i}")
+                print(f"ERROR: Manchester decoding error at bit {i}")
                 raise ValueError("Manchester decoding error")
             frame <<= 1
             frame |= one
 
         else:
             if not (mframe & mask2):
-                send_syslog(f"ERROR: Manchester decoding error at bit {i}")
+                print(f"ERROR: Manchester decoding error at bit {i}")
                 raise ValueError("Manchester decoding error")
             frame <<= 1
             frame |= zero
@@ -88,7 +88,7 @@ def frame_decode(frame: int) -> tuple[int, int, int]:
 
     parity = bin(frame).count("1")
     if parity & 1:
-        send_syslog(f"ERROR: Parity bit error, frame: {hex(frame)}")
+        print(f"ERROR: Parity bit error, frame: {hex(frame)}")
         raise ValueError("Parity bit error")
 
     # OT spec 4.2.3: spare bits (27-24) should always be 0

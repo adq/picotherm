@@ -49,6 +49,7 @@ class BoilerValues():
     rbp_maxch_setpoint: str = None
 
 boiler_values = BoilerValues()
+mqtt_client_instance = None
 
 
 STATUS_LOOP_DELAY_MS = 750
@@ -230,7 +231,27 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
     boiler_values.boiler_fault_active = boiler_status['fault']
 
     if boiler_values.boiler_fault_active and not prev_fault:
-        send_syslog("FAULT DETECTED: boiler fault active")
+        # Read fault flags to get details about what faulted
+        try:
+            fault_flags = await opentherm_app.read_fault_flags()
+            fault_details = []
+            if fault_flags['low_water_pressure']:
+                fault_details.append("low water pressure")
+            if fault_flags['flame_fault']:
+                fault_details.append("flame fault")
+            if fault_flags['air_pressure_fault']:
+                fault_details.append("low air pressure")
+            if fault_flags['water_over_temp']:
+                fault_details.append("high water temperature")
+            if fault_flags['oem_code']:
+                fault_details.append(f"OEM code {fault_flags['oem_code']}")
+
+            if fault_details:
+                send_syslog(f"FAULT DETECTED: {', '.join(fault_details)}")
+            else:
+                send_syslog("FAULT DETECTED: boiler fault active (no specific flags set)")
+        except Exception as ex:
+            send_syslog(f"FAULT DETECTED: boiler fault active (unable to read fault details: {str(ex)})")
 
     # OT spec 5.2: master MUST send ID 1 (TSet) with WRITE_DATA every cycle
     await opentherm_app.control_ch_setpoint(boiler_values.boiler_flow_temperature_setpoint)
@@ -364,6 +385,7 @@ def mqtt_callback(topic, msg):
         msg: Bytes payload
     """
     global boiler_values
+    global mqtt_client_instance
 
     send_syslog(f"MQTT CALLBACK: topic={topic[:50]} msg={msg[:30]}")
 
@@ -371,9 +393,15 @@ def mqtt_callback(topic, msg):
         if msg == b'ON':
             send_syslog("MQTT CMD: CH enabled ON")
             boiler_values.boiler_ch_enabled = True
+            # Immediately publish requested state back to avoid bouncing
+            if mqtt_client_instance:
+                asyncio.create_task(mqtt_client_instance.publish_string("homeassistant/switch/boilerCHEnabled/state", 'ON'))
         elif msg == b'OFF':
             send_syslog("MQTT CMD: CH enabled OFF")
             boiler_values.boiler_ch_enabled = False
+            # Immediately publish requested state back to avoid bouncing
+            if mqtt_client_instance:
+                asyncio.create_task(mqtt_client_instance.publish_string("homeassistant/switch/boilerCHEnabled/state", 'OFF'))
 
     elif topic == 'homeassistant/number/boilerCHFlowTemperatureSetpoint/command':
         try:
@@ -382,6 +410,9 @@ def mqtt_callback(topic, msg):
                 v = boiler_values.boiler_flow_temperature_setpoint_rangemax
             send_syslog(f"MQTT CMD: CH setpoint -> {v}")
             boiler_values.boiler_flow_temperature_setpoint = v
+            # Immediately publish requested state back to avoid bouncing
+            if mqtt_client_instance:
+                asyncio.create_task(mqtt_client_instance.publish_string("homeassistant/number/boilerCHFlowTemperatureSetpoint/state", str(round(v, 2))))
         except ValueError:
             send_syslog(f"MQTT CMD: Invalid CH setpoint: {msg}")
 
@@ -389,9 +420,15 @@ def mqtt_callback(topic, msg):
         if msg == b'ON':
             send_syslog("MQTT CMD: DHW enabled ON")
             boiler_values.boiler_dhw_enabled = True
+            # Immediately publish requested state back to avoid bouncing
+            if mqtt_client_instance:
+                asyncio.create_task(mqtt_client_instance.publish_string("homeassistant/switch/boilerDHWEnabled/state", 'ON'))
         elif msg == b'OFF':
             send_syslog("MQTT CMD: DHW enabled OFF")
             boiler_values.boiler_dhw_enabled = False
+            # Immediately publish requested state back to avoid bouncing
+            if mqtt_client_instance:
+                asyncio.create_task(mqtt_client_instance.publish_string("homeassistant/switch/boilerDHWEnabled/state", 'OFF'))
 
     elif topic == 'homeassistant/number/boilerDHWFlowTemperatureSetpoint/command':
         try:
@@ -400,6 +437,9 @@ def mqtt_callback(topic, msg):
                 v = boiler_values.boiler_dhw_temperature_setpoint_rangemax
             send_syslog(f"MQTT CMD: DHW setpoint -> {v}")
             boiler_values.boiler_dhw_temperature_setpoint = v
+            # Immediately publish requested state back to avoid bouncing
+            if mqtt_client_instance:
+                asyncio.create_task(mqtt_client_instance.publish_string("homeassistant/number/boilerDHWFlowTemperatureSetpoint/state", str(round(v, 2))))
         except ValueError:
             send_syslog(f"MQTT CMD: Invalid DHW setpoint: {msg}")
 
@@ -459,12 +499,14 @@ async def mqtt_publish(mqc):
 
 async def mqtt():
     global boiler_values
+    global mqtt_client_instance
 
     mqc = None
     while True:
         try:
             mqc = AsyncMQTTClient("picotherm", cfgsecrets.MQTT_HOST, keepalive=60)
             await mqc.connect()
+            mqtt_client_instance = mqc
 
             mqc.set_callback(mqtt_callback)
             await mqc.subscribe('homeassistant/switch/boilerCHEnabled/command')
@@ -476,7 +518,7 @@ async def mqtt():
             last_publish_stamp = time.ticks_ms()
             while True:
                 if time.ticks_ms() - last_publish_stamp >= MQTT_PUBLISH_MS:
-                    send_syslog('MQTT PING')
+                    print('MQTT PING')
                     await mqtt_publish(mqc)
                     last_publish_stamp = time.ticks_ms()
 
@@ -493,6 +535,7 @@ async def mqtt():
                 except Exception as close_ex:
                     send_syslog(f"MQTT disconnect error: {str(close_ex)}")
                 mqc = None
+                mqtt_client_instance = None
             send_syslog(f"MQTT error: {str(ex)}")
             sys.print_exception(ex)
             await asyncio.sleep(5)
