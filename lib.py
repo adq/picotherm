@@ -113,7 +113,7 @@ def f88(x: int) -> float:
     return s16(x) / 256
 
 
-def send_syslog(message, port=514, hostname="picopower", appname="main", procid="-", msgid="-"):
+def send_syslog(message, port=514, hostname="picotherm", appname="main", procid="-", msgid="-"):
     print(message)
 
     syslog_addr = ('255.255.255.255', port)
