@@ -66,6 +66,7 @@ DATA_ID_HCRATIO = 58
 
 DATA_ID_REMOTE_OVERRIDE_FUNCTION = 100
 DATA_ID_OEM_DIAGNOSTIC_CODE = 115
+DATA_ID_POWER_CYCLES = 97
 DATA_ID_BURNER_STARTS = 116
 DATA_ID_CH_PUMP_STARTS = 117
 DATA_ID_DHW_PUMP_STARTS = 118
@@ -525,6 +526,14 @@ async def read_boiler_return_water_temperature() -> float:
     )
     _check_response_type(r_msg_type, MSG_TYPE_READ_ACK, r_data_id, DATA_ID_TRET)
     return f88(r_data)
+
+
+async def read_power_cycles() -> int:
+    r_msg_type, r_data_id, r_data = await opentherm_exchange_retry(
+        MSG_TYPE_READ_DATA, DATA_ID_POWER_CYCLES, 0
+    )
+    _check_response_type(r_msg_type, MSG_TYPE_READ_ACK, r_data_id, DATA_ID_POWER_CYCLES)
+    return r_data
 
 
 async def read_burner_starts() -> int:

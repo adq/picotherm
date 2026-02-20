@@ -11,6 +11,10 @@ from lib import send_syslog
 from async_mqtt_client import AsyncMQTTClient
 
 
+class BoilerRestartDetected(Exception):
+    """Raised when boiler power cycle counter changes, indicating a restart"""
+    pass
+
 
 class BoilerValues():
     # readable things
@@ -47,6 +51,9 @@ class BoilerValues():
     # RBP flags from boiler (None = not yet read, "rw" = read/write, "ro" = read-only)
     rbp_dhw_setpoint: str = None
     rbp_maxch_setpoint: str = None
+
+    # Power cycle counter for restart detection (None = not yet read or unsupported)
+    last_power_cycles: int = None
 
 boiler_values = BoilerValues()
 mqtt_client_instance = None
@@ -293,6 +300,19 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
         boiler_values.boiler_fault_high_water_temperature = fault_flags['water_over_temp']
         last_get_detail_timestamp = time.ticks_ms()
 
+        # Check for boiler restart via power cycle counter
+        if boiler_values.last_power_cycles is not None:
+            try:
+                current_power_cycles = await opentherm_app.read_power_cycles()
+                if current_power_cycles != boiler_values.last_power_cycles:
+                    send_syslog(f"BOILER RESTART DETECTED: power cycles {boiler_values.last_power_cycles} -> {current_power_cycles}")
+                    boiler_values.last_power_cycles = current_power_cycles
+                    raise BoilerRestartDetected(f"Power cycles changed: {boiler_values.last_power_cycles} -> {current_power_cycles}")
+            except BoilerRestartDetected:
+                raise  # Re-raise to break out of inner loop
+            except Exception as ex:
+                send_syslog(f"Failed to read power cycles: {str(ex)}")
+
     # write settings periodically
     if (time.ticks_ms() - last_write_settings_timestamp) > WRITE_SETTINGS_MS:
         # OT spec 5.3.8.2: max relative modulation level (ID 14)
@@ -305,65 +325,84 @@ async def boiler_loop(last_get_detail_timestamp: int, last_write_settings_timest
     return last_get_detail_timestamp, last_write_settings_timestamp
 
 
-async def boiler():
+async def boiler_setup():
     global boiler_values
     global BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG, BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG
+
+    send_syslog("Running boiler setup sequence")
+
+    # OT spec 5.3.2: recommended to exchange config before control/status
+    # Write master configuration (ID 2) - MemberID 0 = non-specific
+    try:
+        await opentherm_app.send_primary_configuration(0)
+    except Exception as ex:
+        send_syslog(f"Failed to write master config: {str(ex)}")
+
+    # OT spec 5.2: master MUST read slave configuration (ID 3) at startup
+    try:
+        slave_config = await opentherm_app.read_secondary_configuration()
+        send_syslog(f"Slave config: {slave_config}")
+    except Exception as ex:
+        send_syslog(f"Failed to read slave config: {str(ex)}")
+
+    # Read RBP flags (ID 6) to check remote parameter support
+    try:
+        rbp_flags = await opentherm_app.read_extra_boiler_params_support()
+        boiler_values.rbp_dhw_setpoint = rbp_flags['dhw_setpoint']
+        boiler_values.rbp_maxch_setpoint = rbp_flags['maxch_setpoint']
+        send_syslog(f"RBP flags: {rbp_flags}")
+    except Exception as ex:
+        send_syslog(f"Failed to read RBP flags: {str(ex)}")
+
+    # Read static limits; rely on defaults if they fail
+    try:
+        boiler_values.boiler_max_capacity, _ = await opentherm_app.read_capacity_and_min_modulation()
+    except Exception as ex:
+        send_syslog(f"Failed to read boiler capacity: {str(ex)}")
+    try:
+        boiler_values.boiler_dhw_temperature_setpoint_rangemin, boiler_values.boiler_dhw_temperature_setpoint_rangemax = await opentherm_app.read_dhw_setpoint_range()
+        tmp = json.loads(BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
+        tmp['min'] = boiler_values.boiler_dhw_temperature_setpoint_rangemin
+        tmp['max'] = boiler_values.boiler_dhw_temperature_setpoint_rangemax
+        BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
+    except Exception as ex:
+        send_syslog(f"Failed to read DHW setpoint range: {str(ex)}")
+    # OT spec 5.3.5: also read max CH setpoint bounds (ID 49)
+    try:
+        boiler_values.boiler_flow_temperature_setpoint_rangemin, boiler_values.boiler_flow_temperature_setpoint_rangemax = await opentherm_app.read_maxch_setpoint_range()
+        tmp = json.loads(BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
+        tmp['min'] = boiler_values.boiler_flow_temperature_setpoint_rangemin
+        tmp['max'] = boiler_values.boiler_flow_temperature_setpoint_rangemax
+        BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
+    except Exception as ex:
+        send_syslog(f"Failed to read max CH setpoint range: {str(ex)}")
+
+
+async def boiler():
+    global boiler_values
 
     while True:
         try:
             last_get_detail_timestamp: int = 0
             last_write_settings_timestamp: int = 0
 
-            # OT spec 5.3.2: recommended to exchange config before control/status
-            # Write master configuration (ID 2) - MemberID 0 = non-specific
-            try:
-                await opentherm_app.send_primary_configuration(0)
-            except Exception as ex:
-                send_syslog(f"Failed to write master config: {str(ex)}")
+            await boiler_setup()
 
-            # OT spec 5.2: master MUST read slave configuration (ID 3) at startup
+            # Read initial power cycle count for restart detection
             try:
-                slave_config = await opentherm_app.read_secondary_configuration()
-                send_syslog(f"Slave config: {slave_config}")
-            except Exception as ex:
-                send_syslog(f"Failed to read slave config: {str(ex)}")
-
-            # Read RBP flags (ID 6) to check remote parameter support
-            try:
-                rbp_flags = await opentherm_app.read_extra_boiler_params_support()
-                boiler_values.rbp_dhw_setpoint = rbp_flags['dhw_setpoint']
-                boiler_values.rbp_maxch_setpoint = rbp_flags['maxch_setpoint']
-                send_syslog(f"RBP flags: {rbp_flags}")
-            except Exception as ex:
-                send_syslog(f"Failed to read RBP flags: {str(ex)}")
-
-            # Read static limits; rely on defaults if they fail
-            try:
-                boiler_values.boiler_max_capacity, _ = await opentherm_app.read_capacity_and_min_modulation()
-            except Exception as ex:
-                send_syslog(f"Failed to read boiler capacity: {str(ex)}")
-            try:
-                boiler_values.boiler_dhw_temperature_setpoint_rangemin, boiler_values.boiler_dhw_temperature_setpoint_rangemax = await opentherm_app.read_dhw_setpoint_range()
-                tmp = json.loads(BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
-                tmp['min'] = boiler_values.boiler_dhw_temperature_setpoint_rangemin
-                tmp['max'] = boiler_values.boiler_dhw_temperature_setpoint_rangemax
-                BOILER_DHW_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
-            except Exception as ex:
-                send_syslog(f"Failed to read DHW setpoint range: {str(ex)}")
-            # OT spec 5.3.5: also read max CH setpoint bounds (ID 49)
-            try:
-                boiler_values.boiler_flow_temperature_setpoint_rangemin, boiler_values.boiler_flow_temperature_setpoint_rangemax = await opentherm_app.read_maxch_setpoint_range()
-                tmp = json.loads(BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG)
-                tmp['min'] = boiler_values.boiler_flow_temperature_setpoint_rangemin
-                tmp['max'] = boiler_values.boiler_flow_temperature_setpoint_rangemax
-                BOILER_CH_FLOW_TEMPERATURE_SETPOINT_HASS_CONFIG = json.dumps(tmp)
-            except Exception as ex:
-                send_syslog(f"Failed to read max CH setpoint range: {str(ex)}")
+                boiler_values.last_power_cycles = await opentherm_app.read_power_cycles()
+                send_syslog(f"Boiler power cycles: {boiler_values.last_power_cycles}")
+            except (opentherm_app.UnknownDataIdError, opentherm_app.DataInvalidError):
+                boiler_values.last_power_cycles = None
+                send_syslog("Boiler does not support power cycle counter (ID 97)")
 
             while True:
                 # errors happen all the damn time, so we just ignore them as per the protocol
                 try:
                     last_get_detail_timestamp, last_write_settings_timestamp = await boiler_loop(last_get_detail_timestamp, last_write_settings_timestamp)
+                except BoilerRestartDetected as ex:
+                    send_syslog(f"Breaking out of status loop: {str(ex)}")
+                    break  # Exit inner loop, will re-run boiler_setup() at top of outer loop
                 except Exception as ex:
                     send_syslog(str(ex))
                     sys.print_exception(ex)

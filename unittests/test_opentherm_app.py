@@ -862,6 +862,32 @@ class TestOpenThermApp_read_boiler_return_water_temperature(unittest.TestCase):
         self.assertEqual(result, -128.0)
 
 
+class TestOpenThermApp_read_power_cycles(unittest.TestCase):
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_power_cycles(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_POWER_CYCLES, 0x1234)
+        result = await read_power_cycles()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_POWER_CYCLES, 0)
+        self.assertEqual(result, 0x1234)
+
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_power_cycles_max(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_POWER_CYCLES, 0xFFFF)
+        result = await read_power_cycles()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_POWER_CYCLES, 0)
+        self.assertEqual(result, 0xFFFF)
+
+    @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
+    @async_test
+    async def test_read_power_cycles_zero(self, mock_opentherm_exchange):
+        mock_opentherm_exchange.return_value = (MSG_TYPE_READ_ACK, DATA_ID_POWER_CYCLES, 0x0000)
+        result = await read_power_cycles()
+        mock_opentherm_exchange.assert_called_once_with(MSG_TYPE_READ_DATA, DATA_ID_POWER_CYCLES, 0)
+        self.assertEqual(result, 0x0000)
+
+
 class TestOpenThermApp_read_burner_starts(unittest.TestCase):
     @patch('opentherm_app.opentherm_exchange_retry', new_callable=AsyncMock)
     @async_test
