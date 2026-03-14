@@ -562,10 +562,7 @@ async def mqtt():
                     last_publish_stamp = time.ticks_ms()
 
                 await asyncio.sleep_ms(10)
-                try:
-                    await mqc.check_msg()
-                except Exception as check_ex:
-                    send_syslog(f"MQTT check_msg error: {str(check_ex)}")
+                await mqc.check_msg()
 
         except Exception as ex:
             if mqc:
