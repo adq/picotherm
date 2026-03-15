@@ -111,7 +111,7 @@ class TestSendSyslog(unittest.TestCase):
         mock_sock_instance.setsockopt.assert_called_once()
 
         # Verify message sent - timestamp omitted since device doesn't know the time
-        expected_msg = b'<13>1 picopower main - - - Test message\r\n'
+        expected_msg = b'<13>1 picotherm main - - - Test message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
 
         # Verify socket closed
@@ -140,7 +140,7 @@ class TestSendSyslog(unittest.TestCase):
         send_syslog("Test message")
 
         # Verify timestamp is omitted since device doesn't know the time
-        expected_msg = b'<13>1 picopower main - - - Test message\r\n'
+        expected_msg = b'<13>1 picotherm main - - - Test message\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
 
     @patch('lib.socket.socket')
@@ -171,5 +171,5 @@ class TestSendSyslog(unittest.TestCase):
         send_syslog("Multi word message with spaces")
 
         # Verify RFC5424 format with timestamp omitted (device doesn't know the time)
-        expected_msg = b'<13>1 picopower main - - - Multi word message with spaces\r\n'
+        expected_msg = b'<13>1 picotherm main - - - Multi word message with spaces\r\n'
         mock_sock_instance.sendto.assert_called_once_with(expected_msg, ('255.255.255.255', 514))
